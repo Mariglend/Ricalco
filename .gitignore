@@ -1,0 +1,16 @@
+# dati personali: progressi, lezioni generate, log, flashcard, Maven e librerie Spring scaricate
+data/
+
+# progetti a tappe: il codice va su GitHub, i file generati quando li esegui no
+progetti/**/target/
+progetti/**/*.db
+progetti/**/avvio.log
+progetti/**/.idea/
+progetti/**/.vscode/
+
+__pycache__/
+*.pyc
+*.bak
+*.zip
+.DS_Store
+Thumbs.db

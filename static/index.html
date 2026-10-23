@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ricalco</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%232747d0'/%3E%3Cpath d='M9 22V10h7a4 4 0 0 1 0 8h-4l6 4' stroke='%23fff' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400;500;600;700&family=Saira+Stencil+One&display=swap">
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<header class="top">
+  <a class="mark" href="#/">Ricalco</a>
+  <nav class="crumbs" id="crumbs" aria-label="Percorso"></nav>
+  <span class="spacer"></span>
+  <button class="btn small ghost" id="noteBtn" type="button" title="Annota cosa ti blocca o cosa ti piace qui: finisce nel diario">Nota</button>
+  <a class="btn small ghost" href="#/diario">Diario</a>
+  <a class="btn small ghost" href="#/prova">Prova il modello</a>
+  <label class="model" for="modelSel" title="Modello locale usato da Ricalco">
+    <span id="modelDot" class="dot"></span>
+    <select id="modelSel" aria-label="Modello"></select>
+  </label>
+</header>
+
+<div class="shell">
+  <main id="view" class="view" tabindex="-1"></main>
+
+  <aside class="tutor" id="tutor" aria-label="Tutor">
+    <header class="t-head">
+      <b>Tutor</b>
+      <span class="t-sub">risponde il tuo modello locale</span>
+      <span class="spacer"></span>
+      <button class="btn small ghost" id="tutorNew" type="button">Nuova chat</button>
+      <button class="btn small ghost only-narrow" id="tutorClose" type="button">Chiudi</button>
+    </header>
+    <p class="t-ctx" id="tutorCtx"></p>
+    <div class="t-msgs" id="tutorMsgs" aria-live="polite"></div>
+    <div class="t-quick" id="tutorQuick"></div>
+    <form class="t-form" id="tutorForm">
+      <textarea id="tutorIn" rows="2" placeholder="Chiedi cosa fa una riga, perché è scritta così, un esempio diverso…"></textarea>
+      <div class="t-actions">
+        <span class="t-hint">Invio per inviare · Maiusc+Invio a capo</span>
+        <button class="btn" id="tutorStop" type="button" hidden>Ferma</button>
+        <button class="btn primary" id="tutorSend" type="submit">Chiedi</button>
+      </div>
+    </form>
+  </aside>
+</div>
+
+<button class="fab only-narrow" id="tutorFab" type="button">Tutor</button>
+<button class="sel-ask" id="selAsk" type="button" hidden>Cosa fa?</button>
+<div class="toast" id="toast" role="status" hidden></div>
+<form class="note-pop" id="notePop" hidden>
+  <b>Nota per il diario</b>
+  <span class="muted">Cosa ti blocca, ti annoia o ti piace qui? Viene salvata insieme a dove ti trovi.</span>
+  <textarea id="noteText" rows="3" placeholder="Es. la spiegazione del blocco 2 non si capisce; ho aspettato troppo la variante…"></textarea>
+  <div class="row"><button class="btn primary small" type="submit">Salva</button><button class="btn small ghost" type="button" id="noteClose">Chiudi</button></div>
+</form>
+
+<script src="/app.js"></script>
+</body>
+</html>
