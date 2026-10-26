@@ -24,6 +24,10 @@ Si apre il browser su http://127.0.0.1:8765. Per chiudere l'app chiudi la finest
 
 ## Oggi (pagina principale)
 
+Le sezioni sono nella barra a sinistra, raggruppate per quello che fai: **Impara** (percorsi, progetti, lezioni libere), **Allenati** (algoritmi, logica, flashcard), **Colloquio**, **Strumenti** (diario, prova del modello). Su schermi stretti la barra si apre con **Menu**.
+
+In cima a Oggi c'è **il piano di oggi**: il ripasso da fare, la prossima unità del percorso, il prossimo algoritmo del catalogo e le domande del colloquio da ripassare.
+
 Appena apri Ricalco trovi l'allenamento del giorno: un esercizio alla volta, quasi sempre un algoritmo classico (in SQL una query), scelto in base al tuo livello. Scegli il linguaggio: **Python**, **Java** o **SQL**.
 
 Ogni esercizio ha tre passi:
@@ -79,7 +83,7 @@ Cinque percorsi, nel menu **Percorsi**:
 
   Le unità Spring eseguono test veri con Maven. Security e AI usano un progetto Maven separato con le loro librerie; nei test di Spring AI il modello è finto, così il risultato è sempre lo stesso e Ollama non serve. Se hai preparato Spring prima di questo aggiornamento, premi «Ripeti la prova Spring» in «Prova il modello» per scaricare anche queste librerie.
 - **SQL**: 17 unità, da SELECT a JOIN, sottoquery, progettazione, indici, transazioni, CTE, window function e query da colloquio. Tutto viene eseguito davvero su SQLite, che è già dentro Python: non serve installare niente.
-- **Algoritmi e strutture dati**: 18 unità, in **Python** o in **Java** (scegli tu, i progressi sono separati). Complessità, hash map, due puntatori, finestra scorrevole, pile e code, ricerca binaria, ricorsione, ordinamenti, liste collegate, alberi, heap, grafi (BFS, DFS, Dijkstra, ordinamento topologico), programmazione dinamica, greedy e backtracking. Gli esercizi sono verificati con test veri.
+- **Algoritmi e strutture dati**: 30 unità, in **Python** o in **Java** (scegli tu, i progressi sono separati). Complessità, hash map, due puntatori, finestra scorrevole, pile e code, ricerca binaria, ricorsione, ordinamenti, liste collegate, alberi, heap, grafi (BFS, DFS, Dijkstra, ordinamento topologico), programmazione dinamica, greedy e backtracking. Gli esercizi sono verificati con test veri.
 
 **Ripreparare un'unità.** Sotto ogni unità c'è «↻ Riprepara l'unità»: Qwen rifà la lezione, la scheda di teoria e gli esercizi di Base, Pratica e Sfida. Puoi tenere i tuoi progressi o azzerarli. I file vecchi restano accanto con estensione `.bak`. Se una lezione dà un errore quando viene eseguita, nell'avviso c'è anche «Fai riscrivere la lezione a Qwen», che rifà solo la lezione.
 
@@ -111,7 +115,7 @@ Un programma vero costruito a tappe, come nei libri «crash course». Il primo �
 Ogni tappa:
 
 1. **Ragiona:** una domanda sul perché della tappa.
-2. **Scrivi:** ricalchi ogni modifica (file nuovo, righe da aggiungere o da sostituire). Vedi il contesto del file, «cosa fa» la modifica e, finita, il «perché». Il livello di aiuto (1, 2, 3) lo scegli tu.
+2. **Scrivi:** ricalchi ogni modifica (file nuovo, righe da aggiungere o da sostituire). Vedi il contesto del file, «cosa fa» la modifica e, finita, il «perché». Il livello di aiuto (1, 2, 3) lo scegli tu. Se una modifica è lunga o già nota (pom.xml, configurazioni) premi **Salta questa modifica**: il codice finisce lo stesso nei file e passi alla modifica dopo.
 3. **Esegui:** i file vengono salvati in `progetti/invasione-aliena/` (accanto all'app) e «Esegui sul tuo PC» apre la finestra del gioco.
 4. **Spiegalo** a un principiante, come dopo ogni codice.
 5. **Tocca a te:** una modifica da fare da solo su una tua copia (`progetti/invasione-aliena-mia/`), con il tuo editor. Le tappe successive non la toccano.
@@ -165,7 +169,23 @@ Le flashcard usano la ripetizione dilazionata (sistema Leitner): una carta che s
 - Gli esercizi passati che tornano in Oggi sono flashcard vere: sul fronte il problema, spieghi a parole come lo risolvi, giri la carta, vedi il piano e il giudizio di Qwen, poi lo riscrivi a memoria.
 - Tasti: `Spazio` gira la carta (`Ctrl+Invio` se stai scrivendo la spiegazione); `1` = non lo sapevo, `2` = difficile, `3` = facile.
 
+## Algoritmi
+
+Un catalogo di oltre 150 problemi da colloquio, in **Python** e in **Java**, divisi per schema: accumulatori, stringhe, hash map, due puntatori, finestra scorrevole, somme prefisse, pile e code, ricerca binaria, ricorsione, ordinamenti, intervalli, matrici, bit, liste collegate, alberi, trie, heap, grafi, union-find, programmazione dinamica, backtracking e greedy, classi. Li ho scritti e verificati io (ogni programma è stato eseguito e l'output controllato), non Qwen, quindi non c'è da aspettare.
+
+Ogni problema si apre come un esercizio di **Oggi**: ragioni sul metodo, poi riscrivi la soluzione. **Il prossimo da fare** ti porta al primo non ancora risolto, dal più facile. I problemi del catalogo entrano anche in Oggi: il punteggio Elo li propone quando sono al tuo livello.
+
 ## Colloquio tecnico
+
+La sezione ha cinque parti, nella barra laterale:
+
+- **Domande a catena:** circa 240 domande vere su Java, Spring, SQL, web e strumenti, Python, fondamenti e OOP, ognuna con 2-3 approfondimenti. Rispondi per scritto; se la risposta regge (voto 3 o più) il selezionatore scava con un «perché?» o un «e se…?», fino a trovare il tuo limite. Vedi punti toccati, punti mancanti, risposta modello e la trappola tipica. Le domande dove ti fermi presto tornano dopo un giorno, quelle che reggi fino in fondo dopo settimane.
+- **System design junior:** 14 scenari (accorciatore di URL, prenotazioni, carrello, rate limiter…). Scrivi entità, endpoint, casi limite e come cresce; Qwen ti valuta con una griglia di criteri, ti mostra una soluzione di riferimento e ti fa le domande di approfondimento.
+- **Code review:** 24 pezzi di codice Java, Python e SQL con problemi nascosti (bug, sicurezza, prestazioni, leggibilità). Scrivi la tua review e vedi, riga per riga, cosa hai trovato e cosa ti è sfuggito.
+- **Comportamentali:** 26 domande come «raccontami un bug difficile», in italiano o in inglese. Qwen controlla la struttura STAR (situazione, compito, azione, risultato) e ti mostra un esempio di risposta.
+- **Panoramica:** le modalità di prima, generate da Qwen per ogni percorso.
+
+Nella panoramica ci sono quattro percorsi: Java backend junior (fino a Spring), Python backend junior (fino a FastAPI), SQL e database, fondamenti di informatica. Ognuno ha tre modalità:
 
 Quattro percorsi: Java backend junior (fino a Spring), Python backend junior (fino a FastAPI), SQL e database, fondamenti di informatica. Ognuno ha tre modalità:
 
@@ -221,6 +241,10 @@ Ricalco registra cosa fai (esercizi, tempi per blocco, errori, aiuti, salti, att
 - **Diario** (in alto): il riassunto degli ultimi 14 giorni. Mostra minuti di lavoro, punteggi, dove passi il tempo, gli **errori di ragionamento** (piani sbagliati o incompleti, spiegazioni deboli, domande di ragionamento sbagliate) separati dagli errori di battitura nei blocchi, gli esercizi saltati, le attese e la velocità del modello.
 - **Nota** (in alto): scrivi in una riga cosa ti blocca, ti annoia o ti piace. La nota viene salvata insieme a dove ti trovi.
 - **Esporta i log** (nel Diario): scarica un file con gli ultimi 30 giorni, utile per analizzarli.
+
+## Lingua
+
+Il selettore **IT / EN** in alto cambia la lingua dell'app. In inglese sono tradotti l'interfaccia, i percorsi, i progetti e gli esercizi già pronti, e Qwen scrive lezioni, esercizi e risposte in inglese. I contenuti generati in inglese stanno in `data/en/`, separati da quelli italiani; progressi, punteggio, flashcard e diario sono condivisi.
 
 ## Dati e sicurezza
 

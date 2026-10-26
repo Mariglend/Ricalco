@@ -13,11 +13,13 @@
 <body>
 <header class="top">
   <a class="mark" href="#/">Ricalco</a>
-  <nav class="crumbs" id="crumbs" aria-label="Percorso"></nav>
+  <button class="btn small ghost only-narrow" id="sideBtn" type="button" aria-controls="side" aria-expanded="false">Menu</button>
+  <nav class="crumbs" id="crumbs" aria-label="Dove sei"></nav>
   <span class="spacer"></span>
   <button class="btn small ghost" id="noteBtn" type="button" title="Annota cosa ti blocca o cosa ti piace qui: finisce nel diario">Nota</button>
-  <a class="btn small ghost" href="#/diario">Diario</a>
-  <a class="btn small ghost" href="#/prova">Prova il modello</a>
+  <span class="lang-sel" id="langSel" role="group" aria-label="Lingua · Language" data-noi18n>
+    <button type="button" data-lang="it" title="Italiano">IT</button><button type="button" data-lang="en" title="English">EN</button>
+  </span>
   <label class="model" for="modelSel" title="Modello locale usato da Ricalco">
     <span id="modelDot" class="dot"></span>
     <select id="modelSel" aria-label="Modello"></select>
@@ -25,6 +27,7 @@
 </header>
 
 <div class="shell">
+  <nav class="side" id="side" aria-label="Sezioni"></nav>
   <main id="view" class="view" tabindex="-1"></main>
 
   <aside class="tutor" id="tutor" aria-label="Tutor">
@@ -59,6 +62,24 @@
   <div class="row"><button class="btn primary small" type="submit">Salva</button><button class="btn small ghost" type="button" id="noteClose">Chiudi</button></div>
 </form>
 
-<script src="/app.js"></script>
+<script src="/i18n/en.js"></script>
+<script src="/js/00-i18n.js"></script>
+<script src="/js/01-base.js"></script>
+<script src="/js/02-lezioni-libere.js"></script>
+<script src="/js/03-ricalco.js"></script>
+<script src="/js/04-lezione.js"></script>
+<script src="/js/05-esercizi.js"></script>
+<script src="/js/06-percorsi.js"></script>
+<script src="/js/07-sessione.js"></script>
+<script src="/js/08-logica-colloquio.js"></script>
+<script src="/js/09-flashcard.js"></script>
+<script src="/js/10-strumenti.js"></script>
+<script src="/js/11-oggi.js"></script>
+<script src="/js/12-feynman.js"></script>
+<script src="/js/13-progetti.js"></script>
+<script src="/js/14-diario.js"></script>
+<script src="/js/15-algoritmi.js"></script>
+<script src="/js/16-colloquio-plus.js"></script>
+<script src="/js/99-avvio.js"></script>
 </body>
 </html>

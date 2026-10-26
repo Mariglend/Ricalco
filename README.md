@@ -1,12 +1,14 @@
 # Ricalco
 
+**Italiano** · [English](README.en.md)
+
 **Impara a programmare riscrivendo il codice, non copiandolo.**
 
 Ricalco è un'app web locale per imparare Python, Java e SQL e prepararsi ai colloqui tecnici. Il metodo è quello del ricalco: prima ragioni su come risolvere il problema, poi riscrivi la soluzione blocco per blocco con sempre meno aiuto, finché la scrivi a memoria o da solo.
 
 Lezioni, esercizi e correzioni li prepara un modello linguistico **che gira sul tuo PC** con [Ollama]. Non serve nessun account, nessuna chiave API e nessun dato esce dal computer. Il codice tuo e del modello viene **eseguito davvero**: un esercizio che non funziona non ti arriva nemmeno.
 
-![Oggi: un esercizio al livello 2 «Struttura»](docs/oggi.png)
+![Oggi: il piano del giorno e un esercizio al livello 2 «Struttura»](docs/oggi.png)
 
 ## Indice
 
@@ -19,18 +21,21 @@ Lezioni, esercizi e correzioni li prepara un modello linguistico **che gira sul 
 - [I tuoi dati](#i-tuoi-dati)
 - [Opzioni](#opzioni)
 - [Problemi comuni](#problemi-comuni)
+- [Lingua: italiano o inglese](#lingua-italiano-o-inglese)
 - [Com'è fatto](#comè-fatto)
+- [Contribuire e licenza](#contribuire-e-licenza)
 
 ## Cosa c'è dentro
 
 | Sezione | Cosa fai |
 |---|---|
 | **Oggi** | Un esercizio alla volta scelto in base al tuo livello (punteggio stile Elo). Ragioni sul metodo, poi riscrivi la soluzione a 4 livelli di aiuto: Ricalco, Struttura, Memoria, Scrivi tu. Gli argomenti seguono il percorso, unità dopo unità, sotto forma di algoritmi. |
-| **Percorsi** | Python (24 unità, fino a FastAPI e SQLAlchemy), Java (33 unità, fino a Spring Boot, Spring Security e Spring AI), SQL (17 unità), Algoritmi e strutture dati (18 unità, in Python o in Java). |
+| **Percorsi** | Python (24 unità, fino a FastAPI e SQLAlchemy), Java (33 unità, fino a Spring Boot, Spring Security e Spring AI), SQL (17 unità), Algoritmi e strutture dati (30 unità, in Python o in Java). |
 | **Progetti** | Programmi veri costruiti a tappe: un gioco con pygame, un'API REST Spring Boot, una web app Spring MVC con Thymeleaf, un database SQLite. I file finiscono in una cartella che apri con il tuo editor. |
+| **Algoritmi** | Un catalogo di oltre 150 problemi da colloquio in Python e Java, divisi per schema (due puntatori, finestra scorrevole, grafi, programmazione dinamica…), scritti e verificati a mano. |
 | **Logica** | Problemi di ragionamento, algoritmi e query, verificati eseguendo codice. |
 | **Flashcard** | Ripetizione dilazionata (sistema Leitner). Prima di girare la carta puoi spiegare la risposta a parole e Qwen la valuta. |
-| **Colloquio** | Domande a risposta scritta, live coding con il timer e simulazione completa con scheda di valutazione, anche in inglese. |
+| **Colloquio** | Domande a catena (il selezionatore scava finché trova il tuo limite), system design junior, code review, domande comportamentali con il metodo STAR, live coding con il timer e simulazione completa con scheda di valutazione, anche in inglese. |
 | **Diario** | Il riassunto di come studi: tempi, punteggi, errori di ragionamento, blocchi più difficili, velocità del modello. |
 
 Alcune idee su cui si basa:
@@ -43,8 +48,9 @@ Alcune idee su cui si basa:
 
 | | |
 |---|---|
-| ![Livello 4 «Scrivi tu» con la revisione di Qwen](docs/scrivi-tu.png) | ![Il percorso Java](docs/percorso.png) |
-| ![Progetti a tappe](docs/progetti.png) | ![Ripasso: un esercizio passato come flashcard](docs/flashcard.png) |
+| ![Il catalogo di algoritmi, diviso per schema](docs/algoritmi.png) | ![Livello 4 «Scrivi tu» con la revisione di Qwen](docs/scrivi-tu.png) |
+| ![Colloquio: domande a catena per area e livello](docs/colloquio.png) | ![Colloquio: code review](docs/review.png) |
+| ![Il percorso Java](docs/percorso.png) | ![Progetti a tappe](docs/progetti.png) |
 
 ## Installazione
 
@@ -96,8 +102,8 @@ ollama pull qwen3:14b
 ### Scaricare Ricalco
 
 ```sh
-git clone https://github.com/Mariglend/ricalco.git
-cd ricalco
+git clone https://github.com/Mariglend/Ricalco.git
+cd Ricalco
 ```
 
 In alternativa scarica lo zip dal pulsante **Code → Download ZIP** di GitHub ed estrailo.
@@ -156,6 +162,15 @@ Ricalco usa qualsiasi modello installato in Ollama: lo scegli dal menu in alto a
 
 Anche con un modello più piccolo gli esercizi restano corretti, perché Ricalco li esegue prima di mostrarteli. Cambia solo quanti tentativi servono, cioè quanto aspetti.
 
+**Più velocità.** Con una GPU da 12 GB o meno conviene attivare in Ollama la flash attention e la cache compressa, che occupano meno memoria video e tengono il modello tutto sulla GPU. Su Windows, in PowerShell, poi riavvia Ollama:
+
+```powershell
+setx OLLAMA_FLASH_ATTENTION 1
+setx OLLAMA_KV_CACHE_TYPE q8_0
+```
+
+Su macOS e Linux esporta le stesse variabili prima di `ollama serve`. Con `ollama ps` controlli che il modello sia «100% GPU».
+
 ## Java e Spring Boot
 
 - **Esercizi Java:** Ricalco cerca da solo il JDK più recente (JAVA_HOME, PATH e le cartelle di installazione più comuni, comprese le JDK scaricate da IntelliJ). Salta i vecchi Java 8 e i JRE senza compilatore. Nella finestra di avvio vedi quale ha scelto.
@@ -197,17 +212,44 @@ Variabili d'ambiente:
 | Una lezione mostra «il programma non è stato eseguito con successo» | Premi **Fai riscrivere la lezione a Qwen**, oppure **↻ Riprepara l'unità** nel percorso. |
 | La pagina non si apre | Guarda nella finestra di avvio su che porta è partito: se la 8765 è occupata ne usa un'altra. |
 
+## Lingua: italiano o inglese
+
+Ricalco nasce in italiano e funziona anche in inglese. Il selettore **IT / EN** è nella barra in alto. In inglese:
+
+- l'interfaccia, le unità dei percorsi, i progetti e gli esercizi già pronti sono tradotti;
+- Qwen scrive in inglese lezioni, esercizi, correzioni e risposte del tutor;
+- lezioni ed esercizi generati in inglese stanno in `data/en/`, separati da quelli italiani: cambiando lingua non perdi niente.
+
+Progressi, punteggio, flashcard e diario sono gli stessi nelle due lingue. Le traduzioni sono in `static/i18n/en.js`: per correggerne una basta cambiare il testo a destra.
+
 ## Com'è fatto
 
 ```
-server.py          server HTTP (solo libreria standard): API, generazione con Ollama, esecuzione e verifica del codice
-static/            l'interfaccia: index.html, app.js, app.css (JavaScript senza framework né build)
-curriculum.py      percorsi, unità, mix di esercizi, esercizi iniziali
-quick.py           esercizi già pronti di «Oggi», livelli, schemi
-projects.py        i progetti a tappe
-spring_runner.py   esecuzione di Spring Boot e JUnit con Maven
-sql_runner.py      esecuzione di SQL su SQLite, in un sottoprocesso
-LEGGIMI.md         la guida completa
+server.py              avvio: controlla la versione di Python e lancia il server
+ricalco/               il server (solo libreria standard), diviso in moduli:
+  config.py            percorsi dei dati, configurazione, log d'uso, priorità delle richieste
+  llm.py               client di Ollama (risposte JSON con schema e streaming)
+  esecuzione.py        esecuzione di Python e Java con i test, scelta del JDK
+  generazione*.py      lezioni ed esercizi generati e verificati eseguendoli
+  percorsi.py          archivio degli esercizi, progressi, lavoro in sottofondo
+  lezioni.py           lezioni delle unità, coda con precedenza
+  oggi.py              pagina «Oggi»: punteggio Elo, livelli, ripasso, prova settimanale
+  progetti.py, colloquio.py, flashcard.py, feynman.py, diario.py, diagnostica.py
+  catalogo.py          catalogo di algoritmi da colloquio
+  approfondimenti.py   domande a catena, system design, code review, domande comportamentali
+  dati/                i contenuti scritti a mano: algoritmi e colloquio (JSON)
+  i18n.py              traduzione inglese delle risposte
+  web.py               server HTTP: API e file statici
+  curriculum.py        percorsi, unità, esercizi iniziali
+  quick.py             esercizi già pronti di «Oggi», livelli, schemi
+  projects.py          i progetti a tappe
+  spring_runner.py     Spring Boot e JUnit con Maven
+  sql_runner.py        SQL su SQLite, in un sottoprocesso
+static/                l'interfaccia (JavaScript senza framework né build)
+  index.html, app.css
+  js/                  un file per sezione, caricati in ordine (00-i18n.js … 99-avvio.js)
+  i18n/en.js           le traduzioni in inglese
+LEGGIMI.md             la guida completa
 ```
 
 - **Frontend:** una single page in JavaScript vanilla, nessuna dipendenza da scaricare.
@@ -218,5 +260,11 @@ LEGGIMI.md         la guida completa
   - Java con il launcher a file singolo;
   - SQL su SQLite in memoria;
   - Spring con `mvn test` su un progetto modello.
+
+## Contribuire e licenza
+
+Segnalazioni e proposte sono benvenute: leggi [CONTRIBUTING.md](CONTRIBUTING.md) e apri una issue con il modello giusto (bug o idea).
+
+Ricalco è distribuito con licenza [MIT](LICENSE).
 
 [Ollama]: https://ollama.com

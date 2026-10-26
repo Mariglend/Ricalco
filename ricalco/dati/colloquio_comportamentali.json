@@ -1,0 +1,315 @@
+[
+{
+"id": "comp-01",
+"q_it": "Parlami di te.",
+"q_en": "Tell me about yourself.",
+"cosa_cerca": [
+"Se sai sintetizzare il tuo percorso in due minuti",
+"Il collegamento tra la tua storia e questo ruolo",
+"Come comunichi"
+],
+"consigli": "Non è una domanda STAR classica: usa la formula presente, passato, futuro. Chi sei oggi, cosa hai fatto di rilevante, perché sei qui. Evita di raccontare tutta la vita o di ripetere il CV riga per riga.",
+"esempio": "Sono un laureando in informatica e da un anno lavoro soprattutto con Java e Spring Boot. Durante il corso di basi di dati ho capito che mi piace il backend, e da lì ho costruito progetti personali come un'API per prenotare le aule studio, con PostgreSQL e test automatici. Quest'estate ho fatto un tirocinio di tre mesi in una piccola software house, dove ho corretto bug e scritto endpoint REST su un gestionale in produzione. Lì ho imparato quanto contano le code review e i test. Ora cerco un ruolo da sviluppatore backend junior in un team dove crescere, e il vostro prodotto, che gestisce molti dati transazionali, è esattamente il tipo di problema su cui voglio lavorare."
+},
+{
+"id": "comp-02",
+"q_it": "Perché vuoi lavorare per noi?",
+"q_en": "Why do you want to work here?",
+"cosa_cerca": [
+"Se ti sei informato sull'azienda",
+"Motivazione reale, non generica",
+"Allineamento tra i tuoi obiettivi e il ruolo"
+],
+"consigli": "Cita due o tre cose concrete: il prodotto, lo stack, il modo di lavorare, un articolo del loro blog tecnico. Collega ognuna a quello che vuoi imparare o portare. Evita frasi valide per qualsiasi azienda come «siete leader del settore».",
+"esempio": "Ho letto l'annuncio e poi il vostro blog tecnico, in particolare l'articolo sulla migrazione da monolite a servizi con Spring Boot. Mi ha colpito che abbiate spiegato anche gli errori, non solo il risultato: mi fa pensare a un team che condivide. Il vostro stack, Java, PostgreSQL e Kafka, è quello su cui voglio specializzarmi, e Kafka è la parte che conosco meno e che voglio imparare sul lavoro. Inoltre ho visto che fate pair programming con i junior nei primi mesi, che per me è il modo migliore per crescere in fretta. Per questo mi candido qui e non a una posizione qualsiasi."
+},
+{
+"id": "comp-03",
+"q_it": "Perché hai scelto di fare lo sviluppatore?",
+"q_en": "Why did you choose to become a software developer?",
+"cosa_cerca": [
+"Motivazione autentica",
+"Curiosità e passione verificabili",
+"Se hai un'idea realistica del lavoro"
+],
+"consigli": "Racconta un momento concreto in cui hai capito che ti piaceva programmare, poi cosa hai fatto dopo per coltivarlo. Evita risposte vaghe («mi è sempre piaciuta la tecnologia») senza fatti dietro.",
+"esempio": "Al secondo anno di università dovevo analizzare i dati di un esperimento e farlo a mano in Excel mi avrebbe richiesto giorni. Ho scritto il mio primo script Python per farlo e in un pomeriggio avevo i risultati. Quella sensazione di risolvere un problema reale con il codice mi è rimasta. Da lì ho seguito un corso su SQL, poi ho iniziato a costruire piccole applicazioni con Spring Boot. Oggi mi piace soprattutto la parte backend, cioè progettare come i dati si muovono e restano coerenti. So che il lavoro è fatto anche di bug, riunioni e codice altrui, e questo non mi spaventa."
+},
+{
+"id": "comp-04",
+"q_it": "Parlami di un progetto di cui sei fiero.",
+"q_en": "Tell me about a project you are proud of.",
+"cosa_cerca": [
+"Il tuo contributo personale",
+"Profondità tecnica",
+"Capacità di spiegare le scelte e i compromessi",
+"Risultati misurabili"
+],
+"consigli": "Scegli un progetto che conosci a fondo e usa STAR: contesto, obiettivo, cosa hai fatto tu, risultato con numeri se puoi. Parla di scelte tecniche e del perché. Evita di elencare tecnologie senza spiegare cosa hanno risolto.",
+"esempio": "Situazione: nel mio gruppo di volontariato le iscrizioni agli eventi si gestivano con un foglio condiviso, e capitava che due persone prendessero lo stesso turno. Compito: mi sono offerto di fare una piccola applicazione per le iscrizioni. Azione: ho scritto un backend Spring Boot con PostgreSQL e un vincolo univoco su turno e volontario, così il doppio turno era impossibile anche con iscrizioni contemporanee, e ho aggiunto test di integrazione con Testcontainers. Ho messo il tutto su un piccolo server con un deploy automatico da GitHub Actions. Risultato: la usano da otto mesi una quarantina di volontari e non ci sono più stati turni doppi. Ne sono fiero perché è il primo software che altre persone usano davvero ogni settimana."
+},
+{
+"id": "comp-05",
+"q_it": "Raccontami del bug più difficile che hai risolto.",
+"q_en": "Tell me about the most difficult bug you have fixed.",
+"cosa_cerca": [
+"Metodo di debugging",
+"Pazienza e approccio sistematico",
+"Cosa hai imparato e come hai evitato che si ripetesse"
+],
+"consigli": "Descrivi il sintomo, le ipotesi che hai fatto, come le hai verificate e la causa vera. Il selezionatore vuole sentire un metodo, non fortuna. Chiudi con cosa hai cambiato perché non accadesse più.",
+"esempio": "Situazione: durante il tirocinio, un endpoint che restituiva gli ordini di un cliente ogni tanto mostrava date sbagliate di un'ora, ma solo in produzione. Compito: mi hanno chiesto di capire perché. Azione: per prima cosa ho cercato di riprodurlo in locale, senza successo; poi ho confrontato le configurazioni e ho visto che il server di produzione era in UTC mentre i nostri computer erano in ora italiana. Il codice usava LocalDateTime e convertiva in modo implicito. Ho riscritto la conversione usando Instant e ZonedDateTime con fuso esplicito e ho aggiunto un test che fissa il fuso orario. Risultato: il bug è sparito e abbiamo aggiunto alla checklist delle review l'uso di date senza fuso. Ho imparato a sospettare per prima cosa delle differenze tra ambienti."
+},
+{
+"id": "comp-06",
+"q_it": "Raccontami di un errore che hai fatto e di come lo hai gestito.",
+"q_en": "Tell me about a mistake you made and how you handled it.",
+"cosa_cerca": [
+"Onestà e capacità di ammettere gli errori",
+"Reazione sotto pressione",
+"Cosa hai imparato concretamente"
+],
+"consigli": "Scegli un errore vero ma non catastrofico, raccontalo senza scaricare la colpa e dedica la maggior parte della risposta a come hai rimediato e a cosa hai cambiato. Evita i falsi errori come «lavoro troppo».",
+"esempio": "Situazione: durante il tirocinio ho fatto il merge di una modifica che aggiungeva una colonna NOT NULL a una tabella, senza valore di default. Compito: in ambiente di test la migrazione è fallita e ha bloccato il lavoro di altri due colleghi. Azione: appena me ne sono accorto ho avvisato nel canale del team, invece di provare a sistemare in silenzio; ho preparato una nuova migrazione che aggiungeva la colonna nullable, popolava i dati esistenti e solo dopo metteva il vincolo. L'ho fatta rivedere dal mio tutor prima di rilasciarla. Risultato: in circa un'ora l'ambiente era di nuovo funzionante. Da allora provo sempre le migrazioni su una copia dei dati reali prima del merge."
+},
+{
+"id": "comp-07",
+"q_it": "Raccontami di un conflitto con un collega o in un team.",
+"q_en": "Tell me about a time you had a conflict with a teammate.",
+"cosa_cerca": [
+"Come gestisci il disaccordo",
+"Ascolto e rispetto",
+"Capacità di arrivare a una decisione"
+],
+"consigli": "Scegli un conflitto sul lavoro, non personale. Mostra che hai capito il punto di vista dell'altro e che avete deciso con argomenti o dati. Evita di presentarti come quello che aveva ragione e l'altro torto.",
+"esempio": "Situazione: in un progetto universitario di gruppo, io volevo usare PostgreSQL mentre un compagno insisteva per MongoDB. Compito: dovevamo decidere in pochi giorni per non bloccare il lavoro. Azione: invece di discutere a oltranza gli ho chiesto perché preferisse MongoDB; il suo motivo era la flessibilità dello schema all'inizio. Ho proposto di scrivere insieme l'elenco delle entità e delle query principali, e abbiamo visto che i dati erano molto relazionali, con molte JOIN. Abbiamo scelto PostgreSQL, ma usando una colonna JSONB per la parte di dati più variabile, che era la sua preoccupazione. Risultato: il compagno era convinto della scelta, il progetto ha preso 30 e lui si è occupato proprio della parte JSONB. Ho imparato che chiedere il perché sblocca più di quanto faccia insistere."
+},
+{
+"id": "comp-08",
+"q_it": "Raccontami di una volta in cui hai dovuto rispettare una scadenza molto stretta.",
+"q_en": "Tell me about a time you had to meet a tight deadline.",
+"cosa_cerca": [
+"Gestione delle priorità",
+"Comunicazione dei rischi",
+"Lucidità sotto pressione"
+],
+"consigli": "Spiega come hai deciso cosa fare e cosa rimandare, e come hai comunicato con chi aspettava il lavoro. Il selezionatore apprezza chi riduce lo scope in modo consapevole più di chi dice «ho lavorato tutta la notte».",
+"esempio": "Situazione: per un hackathon di 24 ore il mio team doveva presentare una app per segnalare buche stradali. Compito: io ero responsabile del backend. Azione: nelle prime due ore ho scritto con il team la lista delle funzionalità e le abbiamo divise in «indispensabili per la demo» e «se avanza tempo». Ho fatto prima le API indispensabili, cioè creazione della segnalazione con foto e lista su mappa, con dati di prova, così il frontend poteva lavorare subito. Login e notifiche sono rimasti fuori e lo abbiamo dichiarato nella presentazione. Risultato: la demo ha funzionato senza errori e siamo arrivati secondi su quindici squadre. Ho imparato che tagliare presto è meglio che finire a metà."
+},
+{
+"id": "comp-09",
+"q_it": "Raccontami di una volta in cui hai dovuto imparare una tecnologia in fretta.",
+"q_en": "Tell me about a time you had to learn a new technology quickly.",
+"cosa_cerca": [
+"Metodo di apprendimento",
+"Autonomia",
+"Capacità di diventare produttivo in poco tempo"
+],
+"consigli": "Descrivi come hai studiato: documentazione ufficiale, un piccolo prototipo, domande mirate a chi ne sapeva di più. Mostra un risultato concreto ottenuto con la nuova tecnologia. Evita di dire solo «ho guardato dei video».",
+"esempio": "Situazione: al tirocinio mi hanno assegnato un task su un servizio che usava Docker, che non avevo mai usato. Compito: entro una settimana dovevo far partire il servizio in locale e aggiungere un nuovo endpoint. Azione: il primo giorno ho seguito la guida ufficiale «Get started» e ho containerizzato una mia piccola app Spring Boot, per capire Dockerfile e immagini. Il secondo giorno ho letto il docker-compose del progetto riga per riga, annotando i dubbi, e ho chiesto al collega che lo aveva scritto quindici minuti per chiarirli tutti insieme. Risultato: a metà settimana avevo l'ambiente funzionante e ho consegnato l'endpoint nei tempi. Ho anche aggiornato il README con i passi che mancavano, così il junior successivo ci ha messo meno."
+},
+{
+"id": "comp-10",
+"q_it": "Raccontami di un feedback negativo che hai ricevuto.",
+"q_en": "Tell me about a time you received critical feedback.",
+"cosa_cerca": [
+"Se accetti le critiche senza metterti sulla difensiva",
+"Capacità di cambiare",
+"Maturità"
+],
+"consigli": "Scegli un feedback reale e rilevante per il lavoro, racconta come ti ha fatto sentire in una frase e poi concentrati su cosa hai cambiato e su come hai verificato il miglioramento. Evita feedback che sono complimenti travestiti.",
+"esempio": "Situazione: durante il tirocinio, alla mia terza pull request, il revisore ha scritto che le mie PR erano troppo grandi e difficili da rivedere. Compito: dovevo continuare a consegnare lo stesso lavoro ma in modo più facile da revisionare. Azione: all'inizio mi è dispiaciuto, perché pensavo che fare tutto insieme fosse più efficiente; poi ho chiesto al revisore un esempio di come avrebbe diviso la mia PR. Da lì ho iniziato a separare refactoring, nuova funzionalità e test in PR diverse, con una descrizione di cosa controllare. Risultato: il tempo medio di revisione delle mie PR è sceso da qualche giorno a poche ore e i commenti sono diventati più utili. Oggi lo considero uno dei consigli più pratici che ho ricevuto."
+},
+{
+"id": "comp-11",
+"q_it": "Come gestisci più attività con priorità diverse?",
+"q_en": "How do you prioritize when you have several tasks at the same time?",
+"cosa_cerca": [
+"Metodo di organizzazione",
+"Capacità di chiedere chiarimenti",
+"Consapevolezza dell'impatto"
+],
+"consigli": "Racconta un caso concreto: come hai valutato urgenza e impatto, con chi ti sei confrontato e come hai comunicato cosa sarebbe slittato. Evita la risposta teorica «faccio una lista».",
+"esempio": "Situazione: durante la sessione d'esami lavoravo part-time come sviluppatore per un piccolo negozio online, e nella stessa settimana avevo un esame, un bug sul checkout e una richiesta di nuova pagina promozionale. Compito: dovevo decidere cosa fare prima con poche ore disponibili. Azione: ho valutato che il bug sul checkout faceva perdere ordini, quindi era prioritario; ho scritto al titolare che avrei risolto quello entro il giorno dopo e che la pagina promozionale sarebbe slittata di tre giorni, chiedendo se andava bene. Lui ha confermato. Ho bloccato nel calendario le ore di studio e quelle di lavoro. Risultato: il bug è stato risolto in un giorno, la pagina è uscita in tempo per la promozione e ho passato l'esame. Ho imparato che dire presto cosa slitta evita sorprese."
+},
+{
+"id": "comp-12",
+"q_it": "Hai esperienza di lavoro da remoto? Come ti organizzi?",
+"q_en": "Have you worked remotely before? How do you stay organized and communicate?",
+"cosa_cerca": [
+"Autonomia",
+"Comunicazione scritta",
+"Affidabilità senza supervisione diretta"
+],
+"consigli": "Porta un esempio concreto, anche un progetto universitario o open source fatto a distanza. Parla di strumenti, ma soprattutto di abitudini: aggiornamenti regolari, domande scritte chiare, documentazione. Evita di dire solo che sei bravo a concentrarti.",
+"esempio": "Situazione: il progetto di ingegneria del software l'ho sviluppato con tre compagni che vivevano in città diverse, quindi tutto da remoto per tre mesi. Compito: io coordinavo la parte backend. Azione: abbiamo usato una board su GitHub Projects con le issue assegnate, una breve call di quindici minuti due volte a settimana e un canale Discord per i dubbi. Io scrivevo ogni sera un messaggio di tre righe con cosa avevo fatto, cosa avrei fatto e dove ero bloccato. Quando avevo un dubbio lo scrivevo già con il contesto e quello che avevo provato, così le risposte arrivavano più in fretta. Risultato: abbiamo consegnato in anticipo di una settimana e il docente ha apprezzato la cronologia ordinata delle issue. Mi trovo bene da remoto, ma apprezzo anche qualche giorno in ufficio per conoscere il team."
+},
+{
+"id": "comp-13",
+"q_it": "Qual è il tuo punto debole?",
+"q_en": "What is your greatest weakness?",
+"cosa_cerca": [
+"Autoconsapevolezza",
+"Onestà",
+"Impegno concreto per migliorare"
+],
+"consigli": "Scegli un punto debole vero, non critico per il ruolo, e spiega cosa stai facendo concretamente per migliorare con un esempio. Evita i classici «sono perfezionista» o «lavoro troppo», che suonano preparati.",
+"esempio": "Un mio punto debole è che tendo a cercare di risolvere i problemi da solo troppo a lungo prima di chiedere aiuto. Durante il tirocinio ho passato quasi un giorno intero bloccato su un errore di configurazione di Spring Security, che il mio tutor ha riconosciuto in dieci minuti. Da allora mi sono dato una regola: se dopo un'ora non ho fatto progressi, scrivo una domanda con il contesto, cosa ho provato e cosa mi aspetto. Nelle settimane successive ho chiesto aiuto più spesso e i miei task si sono chiusi più velocemente. Ci sto ancora lavorando, ma ora so riconoscere quando sto girando a vuoto."
+},
+{
+"id": "comp-14",
+"q_it": "Qual è il tuo punto di forza principale?",
+"q_en": "What would you say is your greatest strength?",
+"cosa_cerca": [
+"Coerenza tra il punto di forza e il ruolo",
+"Prove concrete",
+"Autoconsapevolezza"
+],
+"consigli": "Scegli un punto di forza utile per uno sviluppatore e dimostralo con un episodio breve in formato STAR. Un punto di forza senza esempio non vale molto. Evita di elencarne cinque.",
+"esempio": "Credo che il mio punto di forza sia la costanza nel portare a termine le cose. Situazione: lo scorso anno volevo imparare il backend in modo serio, ma tra università e lavoro avevo poco tempo. Compito: mi sono dato l'obiettivo di costruire un'API completa in tre mesi. Azione: ho lavorato un'ora ogni sera, con piccoli obiettivi settimanali scritti in un file, e ogni domenica facevo il punto su cosa era finito. Risultato: in tre mesi ho finito un'API per la gestione di una palestra con autenticazione, test e documentazione OpenAPI, che oggi è nel mio portfolio. Nel lavoro mi aspetto di portare la stessa costanza sui task lunghi e poco brillanti."
+},
+{
+"id": "comp-15",
+"q_it": "Dove ti vedi tra cinque anni?",
+"q_en": "Where do you see yourself in five years?",
+"cosa_cerca": [
+"Ambizione realistica",
+"Se resterai in azienda abbastanza a lungo",
+"Allineamento con i percorsi di crescita"
+],
+"consigli": "Parla di competenze e responsabilità più che di titoli. Collega la risposta a cosa offre l'azienda. Evita «non lo so» e anche «al tuo posto».",
+"esempio": "Tra cinque anni mi vedo come uno sviluppatore backend autonomo, in grado di progettare un servizio dall'inizio alla fine e di prendere decisioni su architettura e database. Mi piacerebbe anche essere la persona a cui i nuovi junior possono fare domande, come oggi io le faccio ai senior. Per arrivarci vorrei nei primi due anni consolidare Java, Spring e SQL e imparare bene la parte di infrastruttura e cloud. Ho visto che da voi c'è un percorso di crescita con obiettivi chiari, ed è uno dei motivi per cui mi candido."
+},
+{
+"id": "comp-16",
+"q_it": "Che domande hai per noi?",
+"q_en": "Do you have any questions for us?",
+"cosa_cerca": [
+"Interesse reale per il ruolo",
+"Preparazione",
+"Cosa ti interessa davvero in un lavoro"
+],
+"consigli": "Prepara sempre tre o quattro domande, sul lavoro quotidiano, sul team e sulla crescita. Evita di chiedere cose già scritte nell'annuncio o di iniziare da stipendio e ferie al primo colloquio. Rispondere «no, nessuna» dà un'impressione di scarso interesse.",
+"esempio": "Sì, ne ho alcune. Come è fatta una settimana tipica per un junior nel vostro team, quanto tempo è dedicato a sviluppo, review e riunioni? Come funziona l'inserimento nei primi tre mesi, c'è un mentore o un percorso definito? Come fate le code review e quanto tempo passa di solito dal merge alla produzione? Infine, qual è la sfida tecnica più grande che il team sta affrontando quest'anno? Mi aiuterebbe a capire su cosa potrei contribuire."
+},
+{
+"id": "comp-17",
+"q_it": "Raccontami di una volta in cui non eri d'accordo con una decisione presa da un responsabile.",
+"q_en": "Tell me about a time you disagreed with your manager's decision.",
+"cosa_cerca": [
+"Capacità di esprimere un dissenso in modo costruttivo",
+"Rispetto dei ruoli",
+"Disponibilità ad allinearsi una volta presa la decisione"
+],
+"consigli": "Mostra che hai espresso il tuo punto di vista con argomenti, nel momento e nel modo giusto, e che poi hai rispettato la decisione anche se non era la tua. Evita storie in cui il responsabile fa la figura dello sciocco.",
+"esempio": "Situazione: al tirocinio il mio responsabile ha deciso di rilasciare una funzionalità senza i test di integrazione, per rispettare una data concordata con il cliente. Compito: io ero preoccupato perché la funzionalità toccava i pagamenti. Azione: gli ho chiesto cinque minuti e ho spiegato il rischio concreto, mostrando un caso limite che non era coperto. Lui mi ha spiegato che la data non era negoziabile; allora ho proposto di scrivere almeno il test per quel caso limite in un'ora e di aggiungere gli altri subito dopo il rilascio. Ha accettato. Risultato: il rilascio è avvenuto in tempo, i test completi sono arrivati la settimana successiva e il caso limite si è effettivamente presentato in produzione, gestito correttamente. Ho imparato che proporre un'alternativa piccola funziona meglio che dire solo di no."
+},
+{
+"id": "comp-18",
+"q_it": "Raccontami di una volta in cui hai aiutato un collega o un compagno in difficoltà.",
+"q_en": "Tell me about a time you helped a teammate who was struggling.",
+"cosa_cerca": [
+"Spirito di squadra",
+"Empatia",
+"Capacità di spiegare"
+],
+"consigli": "Racconta come ti sei accorto della difficoltà, cosa hai fatto concretamente e cosa è cambiato. Mostra che hai aiutato senza sostituirti all'altro. Evita di sembrare paternalistico.",
+"esempio": "Situazione: in un progetto di gruppo, una compagna che veniva da un percorso di statistica era bloccata da giorni sulle query SQL con JOIN e GROUP BY. Compito: il suo pezzo era necessario per il nostro report finale. Azione: le ho proposto un'ora insieme; invece di scrivere io le query, abbiamo preso le sue tabelle e disegnato su carta cosa produceva ogni JOIN, poi lei ha scritto la query e io facevo solo domande. Le ho anche passato una serie di esercizi su un database di esempio che avevo usato per studiare. Risultato: in due giorni ha finito la sua parte da sola e alla fine ha scritto lei la query più complessa del progetto. Spiegare mi ha anche costretto a capire meglio io stesso alcuni dettagli."
+},
+{
+"id": "comp-19",
+"q_it": "Raccontami di una situazione in cui i requisiti non erano chiari.",
+"q_en": "Tell me about a time you had to work with unclear requirements.",
+"cosa_cerca": [
+"Capacità di fare le domande giuste",
+"Gestione dell'ambiguità",
+"Comunicazione con chi chiede il lavoro"
+],
+"consigli": "Mostra come hai trasformato una richiesta vaga in qualcosa di verificabile: domande, esempi, un prototipo da far vedere presto. Evita di raccontare che hai indovinato e basta, o che hai aspettato senza fare nulla.",
+"esempio": "Situazione: un'associazione sportiva mi ha chiesto di «fare un sistema per gestire gli iscritti», senza altri dettagli. Compito: dovevo capire cosa serviva davvero prima di scrivere codice. Azione: ho chiesto di vedere come lavoravano già, cioè un foglio Excel e un quaderno per i pagamenti, e ho scritto un elenco di cinque funzioni che sembravano utili, chiedendo al presidente di ordinarle per importanza. Poi in una settimana ho fatto un prototipo con solo le prime due, anagrafica e scadenza del certificato medico, e gliel'ho mostrato. Lì sono emerse due esigenze che nessuno aveva detto, come l'invio di un promemoria prima della scadenza. Risultato: abbiamo evitato di sviluppare funzioni inutili e la prima versione usata davvero è uscita in un mese."
+},
+{
+"id": "comp-20",
+"q_it": "Raccontami di una volta in cui hai dovuto spiegare un concetto tecnico a una persona non tecnica.",
+"q_en": "Tell me about a time you had to explain a technical concept to a non-technical person.",
+"cosa_cerca": [
+"Capacità di semplificare senza dire cose sbagliate",
+"Empatia verso l'interlocutore",
+"Attenzione al risultato pratico"
+],
+"consigli": "Racconta chi era l'interlocutore, perché doveva capire, come hai adattato il linguaggio (esempi, analogie) e come hai verificato che avesse capito. Evita il gergo anche mentre racconti.",
+"esempio": "Situazione: il titolare del negozio online per cui lavoravo part-time voleva sapere perché il sito avrebbe dovuto essere fermo mezz'ora per un aggiornamento del database. Compito: doveva decidere quando farlo e non aveva conoscenze tecniche. Azione: gli ho spiegato che era come riorganizzare gli scaffali del magazzino: per farlo in sicurezza bisogna chiudere il negozio un momento, altrimenti si rischia di vendere un prodotto che è in mezzo allo spostamento. Poi gli ho mostrato il grafico delle visite per ora, dove si vedeva che alle 6 del mattino c'erano pochissimi clienti. Gli ho chiesto di ripetermi con parole sue cosa sarebbe successo. Risultato: ha scelto lui l'orario, abbiamo fatto l'aggiornamento senza lamentele dei clienti e da allora mi chiede di spiegargli così anche le altre modifiche."
+},
+{
+"id": "comp-21",
+"q_it": "Raccontami di una volta in cui hai preso un'iniziativa senza che nessuno te lo chiedesse.",
+"q_en": "Tell me about a time you took initiative without being asked.",
+"cosa_cerca": [
+"Proattività",
+"Senso di responsabilità",
+"Capacità di valutare se l'iniziativa era utile"
+],
+"consigli": "Scegli un'iniziativa che ha avuto un effetto concreto e spiega come l'hai proposta senza scavalcare nessuno. Il selezionatore vuole vedere proattività ma anche buon senso.",
+"esempio": "Situazione: al tirocinio ho notato che per far partire il progetto in locale ogni nuovo arrivato impiegava quasi due giorni, perché il README era vecchio e mancavano alcuni passaggi. Compito: nessuno me lo aveva chiesto, ma io stesso ci avevo perso molto tempo. Azione: mentre configuravo il mio ambiente ho annotato ogni problema e la soluzione, poi ho chiesto al tutor se potevo aggiornare la documentazione. Ho riscritto il README e aggiunto uno script che controllava le versioni di Java e Docker e creava il database di sviluppo. Risultato: il tirocinante arrivato un mese dopo ha avuto l'ambiente pronto in mezza giornata, e il team ha deciso di aggiungere l'aggiornamento del README alla definizione di «fatto»."
+},
+{
+"id": "comp-22",
+"q_it": "Raccontami di un progetto che non è andato come previsto.",
+"q_en": "Tell me about a project that didn't go as planned.",
+"cosa_cerca": [
+"Capacità di analizzare un insuccesso",
+"Resilienza",
+"Lezioni concrete"
+],
+"consigli": "Racconta onestamente cosa è andato storto e la tua parte di responsabilità, poi cosa avete salvato e cosa fai diversamente oggi. Evita di dare la colpa solo agli altri o alla sfortuna.",
+"esempio": "Situazione: con due amici abbiamo provato a costruire un'app per scambiarsi libri usati tra studenti. Compito: io mi occupavo del backend. Azione: abbiamo passato i primi due mesi a progettare tutto, compresi chat, recensioni e notifiche, senza far provare niente a nessuno. Quando finalmente abbiamo mostrato una versione a una ventina di studenti, quasi nessuno la usava, perché per loro bastavano i gruppi già esistenti sui social. A quel punto abbiamo deciso di fermarci. Risultato: il progetto non è mai andato online, ma io ho imparato molto su Spring Security e WebSocket, e soprattutto ho imparato a validare un'idea con utenti veri prima di costruire tutto. Oggi, nei miei progetti, faccio uscire una versione minima il prima possibile."
+},
+{
+"id": "comp-23",
+"q_it": "Come gestisci lo stress e la pressione?",
+"q_en": "How do you handle stress and pressure?",
+"cosa_cerca": [
+"Strategie concrete",
+"Equilibrio",
+"Affidabilità nei momenti difficili"
+],
+"consigli": "Racconta un episodio in cui eri sotto pressione e cosa hai fatto praticamente per mantenere la lucidità. Puoi citare abitudini personali, ma ancorale a un esempio. Evita di dire che non provi mai stress.",
+"esempio": "Situazione: nell'ultima sessione avevo tre esami in dieci giorni e nello stesso periodo il negozio online per cui lavoravo ha avuto un problema con i pagamenti. Compito: dovevo gestire entrambe le cose senza crollare. Azione: la prima cosa che faccio quando sono sotto pressione è scrivere tutto quello che devo fare e stimare quanto tempo richiede, perché vedere la lista mi toglie l'ansia del «non ci sto dietro». Ho spostato un esame all'appello successivo, dopo aver verificato che non mi avrebbe ritardato la laurea, e ho dato al problema dei pagamenti due mattine piene. La sera continuavo ad andare a correre, che per me è il modo migliore per staccare. Risultato: il problema è stato risolto e i due esami rimasti sono andati bene. Ho imparato che rinunciare a qualcosa in modo consapevole è meglio che fare tutto male."
+},
+{
+"id": "comp-24",
+"q_it": "Ti è mai capitato di lavorare su codice scritto da altri, vecchio o poco documentato? Come hai fatto?",
+"q_en": "Have you ever had to work on legacy code written by someone else? How did you approach it?",
+"cosa_cerca": [
+"Approccio metodico a codice sconosciuto",
+"Rispetto per il lavoro altrui",
+"Attenzione a non rompere cose esistenti"
+],
+"consigli": "Spiega come hai capito il codice prima di modificarlo: lettura, debug, test che fissano il comportamento attuale, domande a chi lo conosceva. Evita di raccontare che hai riscritto tutto perché era brutto.",
+"esempio": "Situazione: al tirocinio mi hanno chiesto di aggiungere uno sconto per quantità in un modulo di calcolo dei prezzi scritto anni prima, senza test e con metodi da trecento righe. Compito: dovevo aggiungere la funzione senza cambiare i prezzi esistenti. Azione: per prima cosa ho scritto una decina di test che verificavano il comportamento attuale con casi reali presi dal database di test, anche quelli che sembravano strani. Poi ho eseguito il codice con il debugger per capire il flusso e ho chiesto a un collega senior il motivo di due regole che non capivo. Solo dopo ho estratto il calcolo in un metodo più piccolo e aggiunto lo sconto, con nuovi test. Risultato: la funzione è andata in produzione senza regressioni, e i test che avevo scritto sono rimasti come rete di sicurezza per chi è venuto dopo."
+},
+{
+"id": "comp-25",
+"q_it": "Perché dovremmo scegliere te rispetto ad altri candidati?",
+"q_en": "Why should we hire you over other candidates?",
+"cosa_cerca": [
+"Sintesi dei tuoi punti di forza",
+"Collegamento con le esigenze del ruolo",
+"Fiducia senza arroganza"
+],
+"consigli": "Riassumi in tre punti cosa porti, collegando ciascuno a un requisito dell'annuncio e a una prova concreta. Non parlare degli altri candidati, che non conosci. Evita risposte generiche come «sono motivato».",
+"esempio": "Non conosco gli altri candidati, ma posso dirti cosa porto io. Primo, ho già messo le mani su un progetto Spring Boot in produzione durante il tirocinio, quindi conosco il ciclo di pull request, review e rilascio. Secondo, ho basi solide di SQL: nel mio ultimo progetto ho ottimizzato una query che passava da due secondi a cinquanta millisecondi aggiungendo l'indice giusto e riscrivendo una subquery. Terzo, imparo in fretta e in modo ordinato, come quando ho imparato Docker in una settimana durante il tirocinio. Per un ruolo junior in cui serve diventare produttivi presto su Java e PostgreSQL, credo che questa combinazione sia utile."
+},
+{
+"id": "comp-26",
+"q_it": "Quali sono le tue aspettative di stipendio?",
+"q_en": "What are your salary expectations?",
+"cosa_cerca": [
+"Se conosci il mercato",
+"Realismo",
+"Capacità di negoziare con calma"
+],
+"consigli": "Informati prima sulle fasce per un junior nella tua città e nel settore, e indica un intervallo ragionevole spiegando su cosa si basa. Puoi aggiungere che valuti l'offerta nel suo insieme (formazione, smart working, benefit). Evita di rispondere «quello che volete voi» o di dare un numero senza averci pensato.",
+"esempio": "Mi sono informato sulle offerte per sviluppatori backend junior in questa zona e ho visto che la fascia più comune è tra 26.000 e 30.000 euro lordi annui. Considerando il tirocinio che ho fatto e il mio portfolio, mi aspetto una cifra in quella fascia. Detto questo, per me contano molto anche la formazione, la presenza di un mentore e la possibilità di qualche giorno di smart working, quindi valuterei l'offerta nel suo complesso. Mi fa piacere capire anche qual è la fascia prevista per questa posizione."
+}
+]

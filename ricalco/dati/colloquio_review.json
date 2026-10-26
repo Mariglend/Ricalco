@@ -1,0 +1,1064 @@
+[
+{
+"id": "rev-01",
+"lang": "java",
+"livello": 1,
+"titolo": "Registrazione utente",
+"contesto": "Questo metodo di un service Spring registra un nuovo utente a partire dai dati inviati dal form di iscrizione.",
+"codice": "@Service\npublic class UserService {\n\n    @Autowired\n    private UserRepository userRepository;\n\n    public User register(String email, String password, String role) {\n        if (email == null || email == \"\") {\n            throw new IllegalArgumentException(\"email obbligatoria\");\n        }\n        User existing = userRepository.findByEmail(email);\n        if (existing != null) {\n            throw new IllegalStateException(\"email gia registrata\");\n        }\n        User u = new User();\n        u.setEmail(email);\n        u.setPassword(password);\n        u.setRole(role);\n        userRepository.save(u);\n        System.out.println(\"Registrato utente \" + email + \" con password \" + password);\n        return u;\n    }\n}",
+"problemi": [
+{
+"riga": 4,
+"tipo": "design",
+"gravita": "bassa",
+"problema": "Field injection: dipendenza nascosta, campo non final e classe difficile da testare senza Spring.",
+"correzione": "Usare la constructor injection con campo `private final UserRepository userRepository`."
+},
+{
+"riga": 8,
+"tipo": "bug",
+"gravita": "media",
+"problema": "Le stringhe si confrontano con `==` (identità) invece che per contenuto, quindi una stringa vuota creata a runtime passa il controllo.",
+"correzione": "Usare `email.isBlank()` (o `StringUtils.hasText(email)`) e validare anche il formato dell'email."
+},
+{
+"riga": 11,
+"tipo": "bug",
+"gravita": "media",
+"problema": "Controllo e inserimento non sono atomici: due richieste contemporanee possono registrare la stessa email.",
+"correzione": "Aggiungere un vincolo UNIQUE su email nel database e gestire la `DataIntegrityViolationException`."
+},
+{
+"riga": 17,
+"tipo": "sicurezza",
+"gravita": "alta",
+"problema": "La password viene salvata in chiaro nel database.",
+"correzione": "Salvare solo l'hash: `u.setPassword(passwordEncoder.encode(password))` con un `BCryptPasswordEncoder`."
+},
+{
+"riga": 18,
+"tipo": "sicurezza",
+"gravita": "alta",
+"problema": "Il ruolo arriva dal client: chiunque può registrarsi come ADMIN (privilege escalation).",
+"correzione": "Ignorare il ruolo in input e assegnare lato server un ruolo di default, es. `u.setRole(Role.USER)`."
+},
+{
+"riga": 20,
+"tipo": "sicurezza",
+"gravita": "alta",
+"problema": "La password viene scritta nei log, per di più con `System.out` invece di un logger.",
+"correzione": "Usare un logger (`log.info(\"Registrato utente id={}\", u.getId())`) senza mai loggare credenziali."
+}
+],
+"domanda_finale": "Come scriveresti uno unit test per verificare che una email già presente venga rifiutata?"
+},
+{
+"id": "rev-02",
+"lang": "java",
+"livello": 1,
+"titolo": "Lettura file di configurazione",
+"contesto": "Questa classe di utilità legge un file di configurazione chiave=valore e dice se l'applicazione gira in produzione.",
+"codice": "public class ConfigLoader {\n\n    public static Map<String, String> load(String path) {\n        Map<String, String> config = new HashMap<>();\n        try {\n            BufferedReader reader = new BufferedReader(new FileReader(path));\n            String line;\n            while ((line = reader.readLine()) != null) {\n                if (line.startsWith(\"#\") || line.trim().length() == 0) {\n                    continue;\n                }\n                String[] parts = line.split(\"=\");\n                config.put(parts[0].trim(), parts[1].trim());\n            }\n        } catch (IOException e) {\n            e.printStackTrace();\n        }\n        return config;\n    }\n\n    public static boolean isProduction(Map<String, String> config) {\n        return config.get(\"env\") == \"prod\";\n    }\n}",
+"problemi": [
+{
+"riga": 6,
+"tipo": "bug",
+"gravita": "alta",
+"problema": "Il reader non viene mai chiuso: file handle persi, soprattutto se viene lanciata un'eccezione.",
+"correzione": "Usare try-with-resources: `try (BufferedReader reader = Files.newBufferedReader(Path.of(path), StandardCharsets.UTF_8)) { ... }`."
+},
+{
+"riga": 12,
+"tipo": "bug",
+"gravita": "media",
+"problema": "Una riga senza `=` causa `ArrayIndexOutOfBoundsException`, e un valore che contiene `=` viene troncato.",
+"correzione": "Usare `line.split(\"=\", 2)` e controllare che `parts.length == 2`, altrimenti segnalare la riga malformata."
+},
+{
+"riga": 16,
+"tipo": "bug",
+"gravita": "media",
+"problema": "L'eccezione viene ingoiata: se il file manca l'app parte con una configurazione vuota senza accorgersene.",
+"correzione": "Rilanciare un'eccezione significativa, es. `throw new UncheckedIOException(\"Config non leggibile: \" + path, e)`."
+},
+{
+"riga": 22,
+"tipo": "bug",
+"gravita": "alta",
+"problema": "Confronto di stringhe con `==`: il valore letto da file non è mai lo stesso oggetto del letterale, quindi restituisce sempre false.",
+"correzione": "Usare `\"prod\".equals(config.get(\"env\"))`, che gestisce anche il caso di chiave mancante."
+}
+],
+"domanda_finale": "Che cosa cambia se questo metodo viene chiamato da più thread contemporaneamente?"
+},
+{
+"id": "rev-03",
+"lang": "java",
+"livello": 2,
+"titolo": "Prodotti nel carrello",
+"contesto": "Questa classe modella un prodotto del catalogo e un carrello che ne calcola il totale.",
+"codice": "public class Product {\n\n    private String sku;\n    private String name;\n    private double price;\n\n    public Product(String sku, String name, double price) {\n        this.sku = sku;\n        this.name = name;\n        this.price = price;\n    }\n\n    @Override\n    public boolean equals(Object o) {\n        Product other = (Product) o;\n        return sku.equals(other.sku);\n    }\n\n    public double getPrice() { return price; }\n    public void setSku(String sku) { this.sku = sku; }\n    public String getSku() { return sku; }\n}\n\nclass Cart {\n    private Set<Product> items = new HashSet<>();\n\n    public void add(Product p) { items.add(p); }\n\n    public double total() {\n        double t = 0;\n        for (Product p : items) {\n            t += p.getPrice();\n        }\n        return t;\n    }\n}",
+"problemi": [
+{
+"riga": 5,
+"tipo": "bug",
+"gravita": "media",
+"problema": "Gli importi in `double` producono errori di arrotondamento (0.1 + 0.2 != 0.3).",
+"correzione": "Usare `BigDecimal` (o i centesimi in `long`) per prezzi e totali."
+},
+{
+"riga": 14,
+"tipo": "bug",
+"gravita": "alta",
+"problema": "`equals` è ridefinito senza `hashCode`: nell'`HashSet` due prodotti uguali finiscono in bucket diversi e compaiono due volte.",
+"correzione": "Ridefinire anche `hashCode()` in modo coerente: `return Objects.hash(sku);`."
+},
+{
+"riga": 15,
+"tipo": "bug",
+"gravita": "media",
+"problema": "Cast senza controlli: con `null` o un oggetto di altro tipo lancia `NullPointerException`/`ClassCastException` invece di restituire false.",
+"correzione": "Aggiungere `if (this == o) return true; if (!(o instanceof Product)) return false;` prima del cast."
+},
+{
+"riga": 20,
+"tipo": "design",
+"gravita": "media",
+"problema": "Il campo usato in `equals`/`hashCode` è modificabile: se cambia mentre l'oggetto è nel `HashSet` l'elemento diventa irraggiungibile.",
+"correzione": "Rendere `sku` `final` e togliere il setter (oggetto immutabile rispetto alla sua identità)."
+}
+],
+"domanda_finale": "Se due prodotti con lo stesso SKU vengono aggiunti al carrello, cosa ti aspetti che succeda alla quantità? Come cambieresti il modello?"
+},
+{
+"id": "rev-04",
+"lang": "java",
+"livello": 2,
+"titolo": "Ricerca ordini con JDBC",
+"contesto": "Questo DAO restituisce gli ordini di un cliente, ordinati secondo la colonna scelta dall'utente nella tabella della UI.",
+"codice": "@Repository\npublic class OrderDao {\n\n    private final DataSource dataSource;\n\n    public OrderDao(DataSource dataSource) {\n        this.dataSource = dataSource;\n    }\n\n    public List<Order> findByCustomer(String customerName, String sortColumn) throws SQLException {\n        List<Order> result = new ArrayList<>();\n        Connection conn = dataSource.getConnection();\n        Statement st = conn.createStatement();\n        String sql = \"SELECT * FROM orders\"\n                + \" WHERE customer_name = '\" + customerName + \"'\"\n                + \" ORDER BY \" + sortColumn;\n        ResultSet rs = st.executeQuery(sql);\n        while (rs.next()) {\n            Order o = new Order();\n            o.setId(rs.getLong(\"id\"));\n            o.setCustomerName(rs.getString(\"customer_name\"));\n            o.setTotal(rs.getBigDecimal(\"total\"));\n            result.add(o);\n        }\n        return result;\n    }\n}",
+"problemi": [
+{
+"riga": 12,
+"tipo": "bug",
+"gravita": "alta",
+"problema": "Connection, Statement e ResultSet non vengono mai chiusi: il pool di connessioni si esaurisce in poco tempo.",
+"correzione": "Aprire tutte e tre le risorse in un try-with-resources (oppure usare `JdbcTemplate`)."
+},
+{
+"riga": 14,
+"tipo": "prestazioni",
+"gravita": "bassa",
+"problema": "`SELECT *` legge colonne inutili e rende il codice fragile se la tabella cambia.",
+"correzione": "Elencare solo le colonne usate: `SELECT id, customer_name, total FROM orders`."
+},
+{
+"riga": 15,
+"tipo": "sicurezza",
+"gravita": "alta",
+"problema": "SQL injection: il nome del cliente è concatenato nella query (es. `' OR '1'='1`).",
+"correzione": "Usare un `PreparedStatement` con parametro: `WHERE customer_name = ?` e `ps.setString(1, customerName)`."
+},
+{
+"riga": 16,
+"tipo": "sicurezza",
+"gravita": "alta",
+"problema": "Anche la colonna di ordinamento è iniettabile e non può essere passata come parametro `?`.",
+"correzione": "Validarla con una whitelist: `Set.of(\"id\", \"total\", \"created_at\").contains(sortColumn)`, altrimenti usare un default."
+}
+],
+"domanda_finale": "Come dimostreresti con un test che la SQL injection è stata davvero chiusa?"
+},
+{
+"id": "rev-05",
+"lang": "java",
+"livello": 2,
+"titolo": "Report autori e libri",
+"contesto": "Questo metodo di un service Spring Data JPA costruisce, per ogni autore, il numero di libri e la valutazione media.",
+"codice": "@Service\npublic class ReportService {\n\n    private final AuthorRepository authorRepository;\n    private final BookRepository bookRepository;\n\n    public ReportService(AuthorRepository authorRepository, BookRepository bookRepository) {\n        this.authorRepository = authorRepository;\n        this.bookRepository = bookRepository;\n    }\n\n    public List<AuthorReport> buildReport() {\n        List<Author> authors = authorRepository.findAll();\n        List<AuthorReport> reports = new ArrayList<>();\n        for (Author a : authors) {\n            List<Book> books = bookRepository.findByAuthorId(a.getId());\n            int count = 0;\n            double sum = 0;\n            for (Book b : books) {\n                count++;\n                sum += b.getRating();\n            }\n            reports.add(new AuthorReport(a.getName(), count, sum / count));\n        }\n        return reports;\n    }\n}",
+"problemi": [
+{
+"riga": 13,
+"tipo": "prestazioni",
+"gravita": "media",
+"problema": "Carica in memoria tutti gli autori come entità complete, senza paginazione.",
+"correzione": "Paginare (`findAll(Pageable)`) o, meglio, usare una query di proiezione che restituisce direttamente i dati del report."
+},
+{
+"riga": 16,
+"tipo": "prestazioni",
+"gravita": "alta",
+"problema": "Problema N+1: una query per ogni autore, più tutti i libri caricati solo per contarli.",
+"correzione": "Una sola query aggregata: `SELECT new AuthorReport(a.name, COUNT(b), AVG(b.rating)) FROM Author a LEFT JOIN a.books b GROUP BY a.id, a.name`."
+},
+{
+"riga": 23,
+"tipo": "bug",
+"gravita": "media",
+"problema": "Per un autore senza libri `count` è 0 e la media diventa `NaN`, che finisce nel report.",
+"correzione": "Gestire il caso: `count == 0 ? null : sum / count` (o `COALESCE` nella query aggregata)."
+}
+],
+"domanda_finale": "Come verificheresti, in un test o in locale, quante query SQL esegue questo metodo?"
+},
+{
+"id": "rev-06",
+"lang": "java",
+"livello": 3,
+"titolo": "Rate limiter in memoria",
+"contesto": "Questo bean Spring (singleton) limita ogni IP a 100 richieste al minuto ed è chiamato da un filtro HTTP su ogni richiesta.",
+"codice": "@Component\npublic class RateLimiter {\n\n    private final Map<String, Integer> requests = new HashMap<>();\n    private long windowStart = System.currentTimeMillis();\n    private static final int MAX = 100;\n\n    public boolean allow(String clientIp) {\n        long now = System.currentTimeMillis();\n        if (now - windowStart > 60000) {\n            requests.clear();\n            windowStart = now;\n        }\n        Integer count = requests.get(clientIp);\n        if (count == null) {\n            count = 0;\n        }\n        if (count > MAX) {\n            return false;\n        }\n        requests.put(clientIp, count + 1);\n        return true;\n    }\n}",
+"problemi": [
+{
+"riga": 4,
+"tipo": "bug",
+"gravita": "alta",
+"problema": "`HashMap` condivisa tra i thread delle richieste: non è thread-safe e può corrompersi.",
+"correzione": "Usare `ConcurrentHashMap` (o una libreria come Bucket4j)."
+},
+{
+"riga": 10,
+"tipo": "bug",
+"gravita": "media",
+"problema": "Il reset della finestra non è atomico e `windowStart` non è `volatile`: più thread possono svuotare la mappa insieme o leggere un valore vecchio; inoltre 60000 è un numero magico.",
+"correzione": "Rendere il reset atomico (es. `AtomicLong` con `compareAndSet`) e usare una costante `WINDOW_MS = Duration.ofMinutes(1).toMillis()`."
+},
+{
+"riga": 18,
+"tipo": "bug",
+"gravita": "bassa",
+"problema": "Off-by-one: con `>` passano 101 richieste invece di 100.",
+"correzione": "Usare `count >= MAX`."
+},
+{
+"riga": 21,
+"tipo": "bug",
+"gravita": "alta",
+"problema": "Check-then-act: tra `get` e `put` un altro thread può aggiornare il contatore, quindi gli incrementi si perdono.",
+"correzione": "Incrementare in modo atomico: `int c = requests.merge(clientIp, 1, Integer::sum); return c <= MAX;`."
+}
+],
+"domanda_finale": "Questa soluzione funziona se l'applicazione gira su tre istanze dietro un load balancer? Cosa useresti?"
+},
+{
+"id": "rev-07",
+"lang": "java",
+"livello": 1,
+"titolo": "Utility per fatture",
+"contesto": "Questa classe raccoglie funzioni di supporto usate nella generazione delle fatture.",
+"codice": "public class InvoiceUtils {\n\n    public static int parseQuantity(String s) {\n        try {\n            return Integer.parseInt(s);\n        } catch (Exception e) {\n            return 0;\n        }\n    }\n\n    public static double calc(double[] a, double d) {\n        double t = 0;\n        for (int i = 0; i <= a.length; i++) {\n            t += a[i];\n        }\n        return t - t * d / 100;\n    }\n\n    public static String formatLines(List<String> lines) {\n        String out = \"\";\n        for (String l : lines) {\n            out += l + \"\\n\";\n        }\n        return out;\n    }\n}",
+"problemi": [
+{
+"riga": 7,
+"tipo": "bug",
+"gravita": "media",
+"problema": "L'eccezione (catturata troppo ampia, `Exception`) viene ingoiata: un input errato diventa silenziosamente quantità 0.",
+"correzione": "Catturare solo `NumberFormatException` e rilanciare un errore di validazione, oppure restituire `OptionalInt`."
+},
+{
+"riga": 11,
+"tipo": "leggibilita",
+"gravita": "bassa",
+"problema": "Nomi oscuri (`calc`, `a`, `d`, `t`): non si capisce che calcola un totale scontato.",
+"correzione": "Rinominare, es. `totalWithDiscount(double[] amounts, double discountPercent)`."
+},
+{
+"riga": 12,
+"tipo": "bug",
+"gravita": "media",
+"problema": "Importi monetari in `double`: errori di arrotondamento sui totali in fattura.",
+"correzione": "Usare `BigDecimal` con `setScale(2, RoundingMode.HALF_UP)`."
+},
+{
+"riga": 13,
+"tipo": "bug",
+"gravita": "alta",
+"problema": "Off-by-one: l'ultima iterazione accede a `a[a.length]` e lancia `ArrayIndexOutOfBoundsException`.",
+"correzione": "Usare `i < a.length` o un for-each."
+},
+{
+"riga": 22,
+"tipo": "prestazioni",
+"gravita": "bassa",
+"problema": "Concatenazione di stringhe in un ciclo: crea una nuova stringa a ogni giro (O(n^2)).",
+"correzione": "Usare `String.join(\"\\n\", lines)` oppure uno `StringBuilder`."
+}
+],
+"domanda_finale": "Quali casi limite metteresti negli unit test di `parseQuantity` e del calcolo dello sconto?"
+},
+{
+"id": "rev-08",
+"lang": "java",
+"livello": 3,
+"titolo": "Bonifico tra conti",
+"contesto": "Questo endpoint REST Spring trasferisce un importo dal conto dell'utente autenticato a un altro conto.",
+"codice": "@RestController\n@RequestMapping(\"/api/accounts\")\npublic class TransferController {\n\n    private final AccountRepository accountRepository;\n\n    public TransferController(AccountRepository accountRepository) {\n        this.accountRepository = accountRepository;\n    }\n\n    @PostMapping(\"/transfer\")\n    public Account transfer(@RequestParam Long fromId, @RequestParam Long toId,\n                            @RequestParam BigDecimal amount) {\n        Account from = accountRepository.findById(fromId).get();\n        Account to = accountRepository.findById(toId).get();\n        if (from.getBalance().compareTo(amount) < 0) {\n            throw new IllegalStateException(\"Saldo insufficiente\");\n        }\n        from.setBalance(from.getBalance().subtract(amount));\n        accountRepository.save(from);\n        to.setBalance(to.getBalance().add(amount));\n        accountRepository.save(to);\n        return from;\n    }\n}",
+"problemi": [
+{
+"riga": 12,
+"tipo": "sicurezza",
+"gravita": "alta",
+"problema": "Nessun controllo di proprietà: qualunque utente può indicare un `fromId` altrui e svuotarne il conto (IDOR).",
+"correzione": "Ricavare l'utente dal `SecurityContext` (es. `@AuthenticationPrincipal`) e verificare che `from` appartenga a lui."
+},
+{
+"riga": 13,
+"tipo": "sicurezza",
+"gravita": "alta",
+"problema": "L'importo non è validato: con un valore negativo il bonifico va al contrario e si prelevano soldi dal conto di destinazione.",
+"correzione": "Validare `amount > 0` (es. `@Positive` con `@Validated`) e rifiutare anche `fromId.equals(toId)`."
+},
+{
+"riga": 14,
+"tipo": "bug",
+"gravita": "media",
+"problema": "`Optional.get()` su un id inesistente lancia `NoSuchElementException` e il client riceve un 500.",
+"correzione": "Usare `orElseThrow(() -> new AccountNotFoundException(fromId))` mappata su 404."
+},
+{
+"riga": 16,
+"tipo": "bug",
+"gravita": "alta",
+"problema": "Race condition: due bonifici concorrenti leggono lo stesso saldo, passano entrambi il controllo e il conto va in negativo (lost update).",
+"correzione": "Bloccare le righe con `@Lock(PESSIMISTIC_WRITE)` sul repository oppure usare il versioning ottimistico con `@Version`."
+},
+{
+"riga": 20,
+"tipo": "bug",
+"gravita": "alta",
+"problema": "Manca la transazione: se il secondo `save` fallisce il denaro esce da un conto e non arriva sull'altro.",
+"correzione": "Spostare la logica in un service con metodo `@Transactional`, lasciando il controller sottile."
+},
+{
+"riga": 23,
+"tipo": "design",
+"gravita": "media",
+"problema": "Restituisce direttamente l'entità JPA, esponendo campi interni (e rischiando problemi di serializzazione lazy).",
+"correzione": "Restituire un DTO dedicato, es. `TransferResponse(transactionId, newBalance)`."
+}
+],
+"domanda_finale": "Come testeresti il comportamento con due bonifici concorrenti sullo stesso conto?"
+},
+{
+"id": "rev-09",
+"lang": "java",
+"livello": 2,
+"titolo": "Gestione eventi",
+"contesto": "Questo service formatta gli eventi del calendario, calcola quelli futuri e rimuove quelli passati; è usato da più thread.",
+"codice": "public class EventService {\n\n    private static final SimpleDateFormat FORMAT = new SimpleDateFormat(\"dd/MM/yyyy\");\n    private static List<Event> cache = new ArrayList<>();\n\n    public static List<Event> getCache() {\n        return cache;\n    }\n\n    public String describe(Event e) {\n        return e.getTitle() + \" - \" + FORMAT.format(e.getDate());\n    }\n\n    public List<Event> upcoming(List<Event> events) {\n        List<Event> result = new ArrayList<>();\n        for (Event e : events) {\n            if (e.getDate().after(new Date())) {\n                if (!result.contains(e)) {\n                    result.add(e);\n                }\n            }\n        }\n        cache = result;\n        return result;\n    }\n\n    public void removePast(List<Event> events) {\n        for (Event e : events) {\n            if (e.getDate().before(new Date())) {\n                events.remove(e);\n            }\n        }\n    }\n}",
+"problemi": [
+{
+"riga": 3,
+"tipo": "bug",
+"gravita": "alta",
+"problema": "`SimpleDateFormat` non è thread-safe: condiviso come static produce date sbagliate o eccezioni sotto carico.",
+"correzione": "Usare `java.time`: `DateTimeFormatter.ofPattern(\"dd/MM/yyyy\")` con `LocalDate`, che è immutabile e thread-safe."
+},
+{
+"riga": 7,
+"tipo": "design",
+"gravita": "media",
+"problema": "Espone la lista interna mutabile: chiunque può modificare la cache dall'esterno.",
+"correzione": "Restituire `List.copyOf(cache)` o `Collections.unmodifiableList(cache)`."
+},
+{
+"riga": 18,
+"tipo": "prestazioni",
+"gravita": "media",
+"problema": "`contains` su `ArrayList` dentro un ciclo rende la deduplica O(n^2).",
+"correzione": "Usare un `LinkedHashSet` per mantenere ordine e unicità in O(n)."
+},
+{
+"riga": 23,
+"tipo": "bug",
+"gravita": "media",
+"problema": "Campo static mutabile riassegnato da più thread senza sincronizzazione: altri thread possono non vedere l'aggiornamento.",
+"correzione": "Dichiararlo `volatile` (o usare `AtomicReference<List<Event>>`) e assegnare una lista immutabile."
+},
+{
+"riga": 30,
+"tipo": "bug",
+"gravita": "alta",
+"problema": "Rimozione durante un for-each: lancia `ConcurrentModificationException`.",
+"correzione": "Usare `events.removeIf(e -> e.getDate().before(now))`."
+}
+],
+"domanda_finale": "Come riscriveresti `upcoming` con gli stream, e preferiresti quella versione?"
+},
+{
+"id": "rev-10",
+"lang": "java",
+"livello": 3,
+"titolo": "Elaborazione pagamenti ordini",
+"contesto": "Questo service Spring elabora un batch di ordini addebitando il pagamento tramite un client HTTP esterno.",
+"codice": "@Service\npublic class OrderService {\n\n    private final OrderRepository orderRepository;\n    private final PaymentClient paymentClient;\n    private final Logger log = LoggerFactory.getLogger(OrderService.class);\n\n    public OrderService(OrderRepository orderRepository, PaymentClient paymentClient) {\n        this.orderRepository = orderRepository;\n        this.paymentClient = paymentClient;\n    }\n\n    public void processAll(List<Long> orderIds) {\n        for (Long id : orderIds) {\n            processOne(id);\n        }\n    }\n\n    @Transactional\n    public void processOne(Long id) {\n        Order order = orderRepository.findById(id).orElseThrow();\n        if (order.getStatus().equals(\"PAID\")) {\n            return;\n        }\n        try {\n            paymentClient.charge(order.getCustomerId(), order.getTotal());\n            order.setStatus(\"PAID\");\n        } catch (Exception e) {\n            log.error(\"Pagamento fallito\");\n        }\n        orderRepository.save(order);\n    }\n}",
+"problemi": [
+{
+"riga": 15,
+"tipo": "bug",
+"gravita": "alta",
+"problema": "Self-invocation: chiamato dall'interno della classe il metodo non passa dal proxy Spring, quindi `@Transactional` viene ignorato.",
+"correzione": "Spostare `processOne` in un altro bean, oppure usare `TransactionTemplate` esplicitamente."
+},
+{
+"riga": 22,
+"tipo": "bug",
+"gravita": "alta",
+"problema": "Due esecuzioni concorrenti possono leggere entrambe lo stato non pagato e addebitare due volte il cliente.",
+"correzione": "Bloccare l'ordine (lock pessimistico o `@Version`) e passare al servizio di pagamento una chiave di idempotenza, es. l'id ordine."
+},
+{
+"riga": 26,
+"tipo": "design",
+"gravita": "alta",
+"problema": "Chiamata HTTP esterna dentro la transazione: tiene occupata la connessione DB e, se il commit fallisce, il cliente è addebitato ma l'ordine resta non pagato.",
+"correzione": "Separare le fasi: segnare l'ordine come `PAYMENT_PENDING` e fare commit, chiamare il pagamento fuori transazione, poi aggiornare lo stato."
+},
+{
+"riga": 27,
+"tipo": "leggibilita",
+"gravita": "bassa",
+"problema": "Stati come stringhe libere: refusi non intercettati dal compilatore.",
+"correzione": "Usare un `enum OrderStatus` mappato con `@Enumerated(EnumType.STRING)`."
+},
+{
+"riga": 29,
+"tipo": "bug",
+"gravita": "media",
+"problema": "Eccezione ingoiata e loggata senza stack trace né id ordine: impossibile capire cosa è fallito.",
+"correzione": "Loggare `log.error(\"Pagamento fallito per ordine {}\", id, e)` e marcare l'ordine come `PAYMENT_FAILED` o rilanciare."
+}
+],
+"domanda_finale": "Se il servizio di pagamento va in timeout ma in realtà ha addebitato il cliente, come lo gestiresti?"
+},
+{
+"id": "rev-11",
+"lang": "python",
+"livello": 1,
+"titolo": "Gestione iscritti",
+"contesto": "Queste funzioni di un piccolo modulo gestiscono gli iscritti a un'associazione letti da un file CSV.",
+"codice": "def add_tag(tag, tags=[]):\n    tags.append(tag)\n    return tags\n\n\ndef load_users(path):\n    f = open(path)\n    users = []\n    for line in f.readlines():\n        name, age = line.strip().split(\",\")\n        users.append({\"name\": name, \"age\": age})\n    return users\n\n\ndef find_adults(users):\n    adults = []\n    for i in range(len(users)):\n        if users[i][\"age\"] > 18:\n            adults.append(users[i])\n    return adults",
+"problemi": [
+{
+"riga": 1,
+"tipo": "bug",
+"gravita": "alta",
+"problema": "Default mutabile: la stessa lista è condivisa tra tutte le chiamate, quindi i tag si accumulano.",
+"correzione": "Usare `tags=None` e dentro `if tags is None: tags = []`."
+},
+{
+"riga": 7,
+"tipo": "bug",
+"gravita": "media",
+"problema": "Il file non viene mai chiuso.",
+"correzione": "Usare `with open(path, encoding=\"utf-8\") as f:` (meglio ancora il modulo `csv`)."
+},
+{
+"riga": 11,
+"tipo": "bug",
+"gravita": "alta",
+"problema": "L'età resta una stringa: il confronto successivo con un intero lancia `TypeError`.",
+"correzione": "Convertire in lettura: `\"age\": int(age)`, gestendo i valori non numerici."
+},
+{
+"riga": 17,
+"tipo": "leggibilita",
+"gravita": "bassa",
+"problema": "`range(len(...))` con indici è poco idiomatico.",
+"correzione": "Iterare direttamente o usare una comprehension: `[u for u in users if u[\"age\"] >= 18]`."
+},
+{
+"riga": 18,
+"tipo": "bug",
+"gravita": "media",
+"problema": "Off-by-one: chi ha esattamente 18 anni è maggiorenne ma viene escluso.",
+"correzione": "Usare `>= 18`, magari con una costante `MAGGIORE_ETA = 18`."
+}
+],
+"domanda_finale": "Come scriveresti un test con pytest che dimostra il bug di `add_tag`?"
+},
+{
+"id": "rev-12",
+"lang": "python",
+"livello": 1,
+"titolo": "Login con Flask",
+"contesto": "Questo endpoint Flask verifica username e password e restituisce id e ruolo dell'utente.",
+"codice": "import sqlite3\nfrom flask import Flask, request, jsonify\n\napp = Flask(__name__)\nDB_PATH = \"app.db\"\n\n\n@app.route(\"/login\", methods=[\"POST\"])\ndef login():\n    username = request.form[\"username\"]\n    password = request.form[\"password\"]\n    conn = sqlite3.connect(DB_PATH)\n    cur = conn.cursor()\n    query = \"SELECT id, role, password FROM users WHERE username = '\" + username + \"'\"\n    cur.execute(query)\n    row = cur.fetchone()\n    if row == None:\n        return jsonify({\"error\": \"utente inesistente\"}), 401\n    if row[2] != password:\n        return jsonify({\"error\": \"password errata\"}), 401\n    return jsonify({\"id\": row[0], \"role\": row[1]})\n\n\nif __name__ == \"__main__\":\n    app.run(debug=True)",
+"problemi": [
+{
+"riga": 12,
+"tipo": "bug",
+"gravita": "media",
+"problema": "La connessione non viene mai chiusa.",
+"correzione": "Usare `with closing(sqlite3.connect(DB_PATH)) as conn:` o gestire la connessione con `g` e `teardown_appcontext`."
+},
+{
+"riga": 14,
+"tipo": "sicurezza",
+"gravita": "alta",
+"problema": "SQL injection: lo username è concatenato nella query.",
+"correzione": "Usare un parametro: `cur.execute(\"SELECT ... WHERE username = ?\", (username,))`."
+},
+{
+"riga": 17,
+"tipo": "leggibilita",
+"gravita": "bassa",
+"problema": "Il confronto con `None` va fatto con `is`.",
+"correzione": "Scrivere `if row is None:`."
+},
+{
+"riga": 18,
+"tipo": "sicurezza",
+"gravita": "media",
+"problema": "Messaggi diversi per utente inesistente e password errata permettono di scoprire quali username esistono.",
+"correzione": "Restituire lo stesso messaggio generico, es. `\"credenziali non valide\"`, in entrambi i casi."
+},
+{
+"riga": 19,
+"tipo": "sicurezza",
+"gravita": "alta",
+"problema": "Le password sono salvate e confrontate in chiaro.",
+"correzione": "Salvare solo un hash e verificare con `werkzeug.security.check_password_hash(row[2], password)` (o bcrypt/argon2)."
+},
+{
+"riga": 25,
+"tipo": "sicurezza",
+"gravita": "alta",
+"problema": "Debug attivo: in caso di errore espone la console interattiva di Werkzeug, cioè esecuzione di codice remoto.",
+"correzione": "Leggere il flag da configurazione/variabile d'ambiente e in produzione usare un server WSGI come gunicorn."
+}
+],
+"domanda_finale": "Oltre a correggere questi punti, come proteggeresti l'endpoint dagli attacchi a forza bruta?"
+},
+{
+"id": "rev-13",
+"lang": "python",
+"livello": 2,
+"titolo": "Pulizia anagrafica clienti",
+"contesto": "Queste funzioni trovano email duplicate e fondono due liste di clienti (dizionari con chiave `id`) prima di un import.",
+"codice": "def find_duplicates(emails):\n    duplicates = []\n    for i in range(len(emails)):\n        for j in range(len(emails)):\n            if i != j and emails[i] == emails[j]:\n                if emails[i] not in duplicates:\n                    duplicates.append(emails[i])\n    return duplicates\n\n\ndef merge_customers(old, new):\n    result = old\n    for c in new:\n        found = False\n        for o in result:\n            if o[\"id\"] == c[\"id\"]:\n                o.update(c)\n                found = True\n        if not found:\n            result.append(c)\n    return result\n\n\ndef normalize(email):\n    return email.strip().lower",
+"problemi": [
+{
+"riga": 4,
+"tipo": "prestazioni",
+"gravita": "alta",
+"problema": "Doppio ciclo O(n^2) (più `not in` su lista): con centinaia di migliaia di email diventa inutilizzabile.",
+"correzione": "Contare in O(n): `from collections import Counter; return [e for e, n in Counter(emails).items() if n > 1]`."
+},
+{
+"riga": 12,
+"tipo": "bug",
+"gravita": "alta",
+"problema": "Non crea una copia: la funzione modifica la lista (e i dizionari) passati dal chiamante.",
+"correzione": "Costruire una nuova struttura, es. `by_id = {o[\"id\"]: dict(o) for o in old}`."
+},
+{
+"riga": 15,
+"tipo": "prestazioni",
+"gravita": "media",
+"problema": "Ricerca lineare per ogni nuovo cliente: O(n*m).",
+"correzione": "Indicizzare per id in un dizionario: `by_id.setdefault(c[\"id\"], {}).update(c)` e alla fine `list(by_id.values())`."
+},
+{
+"riga": 25,
+"tipo": "bug",
+"gravita": "alta",
+"problema": "Mancano le parentesi: restituisce il metodo `lower`, non la stringa in minuscolo.",
+"correzione": "Scrivere `return email.strip().lower()`."
+}
+],
+"domanda_finale": "Le email `Mario@X.it` e `mario@x.it ` sono duplicate? Come cambieresti `find_duplicates`?"
+},
+{
+"id": "rev-14",
+"lang": "python",
+"livello": 2,
+"titolo": "Client API ordini",
+"contesto": "Questo script scarica tutti gli ordini da un'API REST paginata per un export notturno.",
+"codice": "import requests\nimport time\n\nAPI_URL = \"https://api.example.com/v1/orders\"\nAPI_KEY = \"a3f9c1e7b2d84f60b1c2\"\n\n\ndef fetch_orders(page):\n    try:\n        r = requests.get(API_URL, params={\"page\": page},\n                         headers={\"Authorization\": \"Bearer \" + API_KEY})\n        return r.json()\n    except:\n        return []\n\n\ndef fetch_all():\n    orders = []\n    page = 1\n    while True:\n        data = fetch_orders(page)\n        if len(data) == 0:\n            break\n        orders = orders + data\n        page += 1\n        time.sleep(1)\n    return orders",
+"problemi": [
+{
+"riga": 5,
+"tipo": "sicurezza",
+"gravita": "alta",
+"problema": "Chiave API scritta nel codice: finisce nel repository e nei log.",
+"correzione": "Leggerla da variabile d'ambiente o secret manager: `API_KEY = os.environ[\"ORDERS_API_KEY\"]`."
+},
+{
+"riga": 10,
+"tipo": "bug",
+"gravita": "media",
+"problema": "Nessun timeout: se il server non risponde lo script resta bloccato per sempre.",
+"correzione": "Passare `timeout=(5, 30)` e usare una `requests.Session` riutilizzata."
+},
+{
+"riga": 12,
+"tipo": "bug",
+"gravita": "media",
+"problema": "Lo status HTTP non viene controllato: una risposta 401/500 viene trattata come dati.",
+"correzione": "Chiamare `r.raise_for_status()` prima di `r.json()`."
+},
+{
+"riga": 13,
+"tipo": "bug",
+"gravita": "alta",
+"problema": "`except` nudo che restituisce lista vuota: un errore di rete viene scambiato per fine dati e l'export risulta troncato senza alcun avviso.",
+"correzione": "Catturare `requests.RequestException`, ritentare con backoff e, se fallisce, loggare e rilanciare."
+},
+{
+"riga": 24,
+"tipo": "prestazioni",
+"gravita": "bassa",
+"problema": "Crea una nuova lista a ogni pagina copiando tutti gli ordini precedenti.",
+"correzione": "Usare `orders.extend(data)`."
+}
+],
+"domanda_finale": "Come testeresti `fetch_all` senza chiamare la vera API?"
+},
+{
+"id": "rev-15",
+"lang": "python",
+"livello": 3,
+"titolo": "Conto e statistiche multithread",
+"contesto": "Queste classi sono usate da un servizio che esegue prelievi in parallelo con più thread e raccoglie statistiche.",
+"codice": "import threading\n\n\nclass BankAccount:\n    def __init__(self, balance=0):\n        self.balance = balance\n\n    def withdraw(self, amount):\n        if self.balance >= amount:\n            self.balance -= amount\n            return True\n        return False\n\n\nclass Stats:\n    counters = {}\n\n    def hit(self, key):\n        if key not in self.counters:\n            self.counters[key] = 0\n        self.counters[key] += 1\n\n\ndef run_withdrawals(account, amounts):\n    threads = []\n    for a in amounts:\n        t = threading.Thread(target=account.withdraw, args=(a,))\n        threads.append(t)\n        t.start()\n    return account.balance",
+"problemi": [
+{
+"riga": 8,
+"tipo": "bug",
+"gravita": "media",
+"problema": "L'importo non è validato: un prelievo negativo aumenta il saldo.",
+"correzione": "Aggiungere `if amount <= 0: raise ValueError(\"importo non valido\")`."
+},
+{
+"riga": 9,
+"tipo": "bug",
+"gravita": "alta",
+"problema": "Check-then-act senza lock: due thread possono passare il controllo insieme e mandare il saldo in negativo.",
+"correzione": "Proteggere controllo e sottrazione con un `threading.Lock` (`with self._lock:`)."
+},
+{
+"riga": 16,
+"tipo": "bug",
+"gravita": "alta",
+"problema": "Attributo di classe mutabile: tutte le istanze di `Stats` condividono lo stesso dizionario (e l'incremento non è protetto).",
+"correzione": "Inizializzarlo in `__init__` (`self.counters = defaultdict(int)`) e usare un lock o `collections.Counter` per thread."
+},
+{
+"riga": 30,
+"tipo": "bug",
+"gravita": "alta",
+"problema": "I thread non vengono attesi: il saldo viene letto prima che i prelievi siano finiti.",
+"correzione": "Chiamare `t.join()` su tutti i thread, o usare `concurrent.futures.ThreadPoolExecutor` e attendere i risultati."
+}
+],
+"domanda_finale": "Il GIL di Python non dovrebbe già evitare queste race condition? Perché no?"
+},
+{
+"id": "rev-16",
+"lang": "python",
+"livello": 1,
+"titolo": "Funzioni di utilità",
+"contesto": "Queste funzioni di un modulo di supporto filtrano gli utenti attivi, calcolano una media voti e restituiscono gli ultimi n elementi di una lista.",
+"codice": "def p(l):\n    r = []\n    for x in l:\n        if x[\"s\"] == \"attivo\" or \"ATTIVO\":\n            r.append(x)\n    return r\n\n\ndef calcola_media(voti):\n    totale = 0\n    for v in voti:\n        totale += v\n    return totale / len(voti)\n\n\ndef ultimi(elementi, n):\n    return elementi[len(elementi) - n - 1:]",
+"problemi": [
+{
+"riga": 1,
+"tipo": "leggibilita",
+"gravita": "media",
+"problema": "Nomi oscuri (`p`, `l`, `r`, `x`, chiave `s`): il codice non dice cosa fa.",
+"correzione": "Rinominare, es. `def utenti_attivi(utenti):` e usare una chiave `\"stato\"`."
+},
+{
+"riga": 4,
+"tipo": "bug",
+"gravita": "alta",
+"problema": "La condizione è sempre vera: `or \"ATTIVO\"` valuta una stringa non vuota, quindi passano tutti gli utenti.",
+"correzione": "Scrivere `if x[\"s\"].lower() == \"attivo\":` oppure `x[\"s\"] in (\"attivo\", \"ATTIVO\")`."
+},
+{
+"riga": 11,
+"tipo": "leggibilita",
+"gravita": "bassa",
+"problema": "Somma reimplementata a mano.",
+"correzione": "Usare `sum(voti)` o direttamente `statistics.mean(voti)`."
+},
+{
+"riga": 13,
+"tipo": "bug",
+"gravita": "media",
+"problema": "Con una lista vuota lancia `ZeroDivisionError`.",
+"correzione": "Gestire il caso: `if not voti: return None` (o sollevare un errore esplicito)."
+},
+{
+"riga": 17,
+"tipo": "bug",
+"gravita": "media",
+"problema": "Off-by-one: restituisce n+1 elementi.",
+"correzione": "Usare `elementi[-n:] if n > 0 else []`."
+}
+],
+"domanda_finale": "Quali test scriveresti per `ultimi` per coprire i casi limite?"
+},
+{
+"id": "rev-17",
+"lang": "python",
+"livello": 2,
+"titolo": "Report ordini in Django",
+"contesto": "Questa view Django restituisce in JSON gli ordini con un certo stato, con email del cliente e righe d'ordine.",
+"codice": "from django.http import JsonResponse\n\nfrom .models import Order\n\n\ndef orders_report(request):\n    status = request.GET.get(\"status\")\n    orders = Order.objects.all()\n    data = []\n    for order in orders:\n        if order.status == status:\n            items = []\n            for item in order.items.all():\n                items.append({\"name\": item.product.name, \"qty\": item.quantity})\n            data.append({\n                \"id\": order.id,\n                \"customer\": order.customer.email,\n                \"items\": items,\n            })\n    return JsonResponse(data, safe=False)",
+"problemi": [
+{
+"riga": 6,
+"tipo": "sicurezza",
+"gravita": "alta",
+"problema": "Nessuna autenticazione né permessi: chiunque scarica gli ordini con le email dei clienti.",
+"correzione": "Aggiungere `@login_required` e `@permission_required(\"shop.view_order\")` (o equivalente)."
+},
+{
+"riga": 8,
+"tipo": "prestazioni",
+"gravita": "alta",
+"problema": "Carica tutti gli ordini e filtra in Python invece che nel database.",
+"correzione": "Filtrare nella query: `Order.objects.filter(status=status)`."
+},
+{
+"riga": 13,
+"tipo": "prestazioni",
+"gravita": "alta",
+"problema": "N+1: una query per le righe di ogni ordine e una per ogni prodotto.",
+"correzione": "Usare `.prefetch_related(\"items__product\")` sulla queryset."
+},
+{
+"riga": 17,
+"tipo": "prestazioni",
+"gravita": "media",
+"problema": "N+1 anche sul cliente: una query per ogni ordine.",
+"correzione": "Aggiungere `.select_related(\"customer\")`."
+},
+{
+"riga": 20,
+"tipo": "prestazioni",
+"gravita": "media",
+"problema": "Nessuna paginazione: la risposta può diventare enorme.",
+"correzione": "Paginare con `django.core.paginator.Paginator` e un parametro `page`."
+}
+],
+"domanda_finale": "Come verificheresti in un test Django quante query esegue questa view?"
+},
+{
+"id": "rev-18",
+"lang": "python",
+"livello": 3,
+"titolo": "Miniature e download file",
+"contesto": "Questi endpoint Flask generano la miniatura di un'immagine caricata e permettono di scaricare i file caricati.",
+"codice": "import os\nimport subprocess\n\nfrom flask import Flask, request, send_file\n\napp = Flask(__name__)\nUPLOAD_DIR = \"/srv/uploads\"\n\n\n@app.route(\"/thumbnail\")\ndef thumbnail():\n    name = request.args.get(\"file\")\n    src = os.path.join(UPLOAD_DIR, name)\n    dst = \"/tmp/thumb_\" + name + \".png\"\n    cmd = \"convert \" + src + \" -resize 200x200 \" + dst\n    subprocess.call(cmd, shell=True)\n    return send_file(dst)\n\n\n@app.route(\"/download\")\ndef download():\n    name = request.args[\"file\"]\n    path = UPLOAD_DIR + \"/\" + name\n    if os.path.exists(path):\n        return send_file(path)\n    return \"not found\", 404",
+"problemi": [
+{
+"riga": 12,
+"tipo": "bug",
+"gravita": "bassa",
+"problema": "Se il parametro manca `name` è `None` e `os.path.join` lancia `TypeError` (errore 500).",
+"correzione": "Usare `request.args.get(\"file\")` con controllo esplicito e `abort(400)`."
+},
+{
+"riga": 13,
+"tipo": "sicurezza",
+"gravita": "alta",
+"problema": "Path traversal: con `../` o un percorso assoluto (`/etc/passwd`) si esce dalla cartella upload.",
+"correzione": "Usare `werkzeug.utils.secure_filename(name)` e verificare che il percorso risolto stia dentro `UPLOAD_DIR`."
+},
+{
+"riga": 14,
+"tipo": "bug",
+"gravita": "media",
+"problema": "Nome di file temporaneo prevedibile e condiviso: richieste concorrenti sullo stesso file si sovrascrivono.",
+"correzione": "Usare `tempfile.NamedTemporaryFile(suffix=\".png\")` o una cartella di cache con nome basato su hash."
+},
+{
+"riga": 16,
+"tipo": "sicurezza",
+"gravita": "alta",
+"problema": "Command injection: il nome file finisce in una shell (es. `x.jpg; rm -rf /`), e il codice di uscita viene ignorato.",
+"correzione": "Passare una lista senza shell: `subprocess.run([\"convert\", src, \"-resize\", \"200x200\", dst], check=True, timeout=30)`."
+},
+{
+"riga": 23,
+"tipo": "sicurezza",
+"gravita": "alta",
+"problema": "Path traversal anche nel download: `?file=../../etc/passwd` restituisce file di sistema.",
+"correzione": "Usare `flask.send_from_directory(UPLOAD_DIR, name)`, che blocca i percorsi fuori dalla cartella."
+}
+],
+"domanda_finale": "Come scriveresti un test automatico che verifica che il path traversal sia bloccato?"
+},
+{
+"id": "rev-19",
+"lang": "python",
+"livello": 3,
+"titolo": "Punti e log eventi",
+"contesto": "Questo modulo legge punti da righe di testo `x;y`, ne elimina i duplicati e registra eventi con il loro orario.",
+"codice": "from datetime import datetime\n\n\nclass Point:\n    def __init__(self, x, y):\n        self.x = x\n        self.y = y\n\n    def __eq__(self, other):\n        return self.x == other.x and self.y == other.y\n\n\ndef log_event(message, when=datetime.now()):\n    print(\"[%s] %s\" % (when.isoformat(), message))\n\n\ndef unique_points(points):\n    seen = set()\n    for p in points:\n        seen.add(p)\n    return list(seen)\n\n\ndef parse_points(rows):\n    points = []\n    for row in rows:\n        try:\n            x, y = row.split(\";\")\n            points.append(Point(float(x), float(y)))\n        except Exception:\n            pass\n    return points",
+"problemi": [
+{
+"riga": 9,
+"tipo": "bug",
+"gravita": "alta",
+"problema": "Definire `__eq__` senza `__hash__` rende la classe non hashable: `seen.add(p)` lancia `TypeError`.",
+"correzione": "Definire `__hash__` coerente (`return hash((self.x, self.y))`) oppure usare `@dataclass(frozen=True)`."
+},
+{
+"riga": 10,
+"tipo": "bug",
+"gravita": "bassa",
+"problema": "Confrontato con un oggetto di altro tipo lancia `AttributeError`.",
+"correzione": "Aggiungere `if not isinstance(other, Point): return NotImplemented`."
+},
+{
+"riga": 13,
+"tipo": "bug",
+"gravita": "alta",
+"problema": "Il default è valutato una volta sola all'import: tutti gli eventi hanno lo stesso orario.",
+"correzione": "Usare `when=None` e dentro `when = when or datetime.now()`."
+},
+{
+"riga": 14,
+"tipo": "design",
+"gravita": "bassa",
+"problema": "`print` invece del modulo `logging`: niente livelli, destinazioni né formattazione configurabile.",
+"correzione": "Usare `logger = logging.getLogger(__name__)` e `logger.info(message)`."
+},
+{
+"riga": 31,
+"tipo": "bug",
+"gravita": "media",
+"problema": "Le righe malformate vengono scartate in silenzio, nascondendo dati corrotti.",
+"correzione": "Catturare solo `ValueError` e loggare la riga scartata (o raccogliere gli errori e segnalarli)."
+}
+],
+"domanda_finale": "Perché Python imposta `__hash__ = None` quando si ridefinisce solo `__eq__`?"
+},
+{
+"id": "rev-20",
+"lang": "sql",
+"livello": 1,
+"titolo": "Ricerca prodotti",
+"contesto": "Questa tabella e questa query servono il box di ricerca del sito; la tabella products ha circa 2 milioni di righe.",
+"codice": "-- Ricerca prodotti dal box di ricerca del sito.\n-- La tabella products ha circa 2 milioni di righe.\nCREATE TABLE products (\n    id          INT PRIMARY KEY,\n    name        VARCHAR(200),\n    category_id INT,\n    price       FLOAT,\n    deleted     INT\n);\n\nSELECT *\nFROM products\nWHERE name LIKE '%' || :testo || '%'\n  AND category_id = :categoria\n  AND deleted = 0\nORDER BY price\nLIMIT 20 OFFSET 100000;",
+"problemi": [
+{
+"riga": 6,
+"tipo": "prestazioni",
+"gravita": "alta",
+"problema": "Nessun indice (e nessuna foreign key) su `category_id`: ogni ricerca fa un full scan su 2 milioni di righe.",
+"correzione": "Aggiungere `REFERENCES categories(id)` e `CREATE INDEX idx_products_cat ON products (category_id, deleted, price);`."
+},
+{
+"riga": 7,
+"tipo": "bug",
+"gravita": "media",
+"problema": "Prezzo in `FLOAT`: valori approssimati e arrotondamenti sbagliati.",
+"correzione": "Usare `DECIMAL(10,2)` (o `NUMERIC`)."
+},
+{
+"riga": 11,
+"tipo": "prestazioni",
+"gravita": "bassa",
+"problema": "`SELECT *` legge colonne inutili e impedisce index-only scan.",
+"correzione": "Elencare le colonne che servono alla pagina: `SELECT id, name, price`."
+},
+{
+"riga": 13,
+"tipo": "prestazioni",
+"gravita": "media",
+"problema": "`LIKE` con `%` iniziale non può usare un indice B-tree.",
+"correzione": "Usare la ricerca full-text del database (es. `tsvector` in PostgreSQL) o un indice trigram."
+},
+{
+"riga": 17,
+"tipo": "prestazioni",
+"gravita": "media",
+"problema": "Con `OFFSET` grande il database legge e scarta 100.000 righe a ogni pagina.",
+"correzione": "Usare la paginazione keyset: `WHERE (price, id) > (:ultimo_prezzo, :ultimo_id) ORDER BY price, id LIMIT 20`."
+}
+],
+"domanda_finale": "Come verificheresti che il database usi davvero l'indice che hai aggiunto?"
+},
+{
+"id": "rev-21",
+"lang": "sql",
+"livello": 2,
+"titolo": "Clienti senza email",
+"contesto": "Questa query estrae i clienti italiani senza email registrati a gennaio, con il totale speso (devono comparire anche quelli che non hanno mai ordinato).",
+"codice": "-- Clienti italiani senza email registrati a gennaio,\n-- con il totale speso (anche chi non ha mai ordinato).\nSELECT\n    c.*,\n    o.*,\n    SUM(o.total) AS speso\nFROM customers c\nLEFT JOIN orders o\n    ON o.customer_id = c.id\nWHERE c.email = NULL\n  AND UPPER(c.country) = 'IT'\n  AND o.status <> 'CANCELLED'\n  AND c.created_at BETWEEN '2026-01-01' AND '2026-01-31'\nGROUP BY\n    c.id\nORDER BY\n    speso DESC;",
+"problemi": [
+{
+"riga": 5,
+"tipo": "bug",
+"gravita": "alta",
+"problema": "Colonne di `orders` non aggregate con `GROUP BY c.id`: errore in molti DBMS o valori casuali in altri.",
+"correzione": "Selezionare solo colonne del cliente (raggruppate) più gli aggregati: `c.id, c.name, ...`."
+},
+{
+"riga": 6,
+"tipo": "bug",
+"gravita": "bassa",
+"problema": "Per i clienti senza ordini `SUM` restituisce `NULL`, non 0.",
+"correzione": "Usare `COALESCE(SUM(o.total), 0) AS speso`."
+},
+{
+"riga": 10,
+"tipo": "bug",
+"gravita": "alta",
+"problema": "Il confronto `= NULL` è sempre UNKNOWN: la query non restituisce mai righe.",
+"correzione": "Usare `c.email IS NULL`."
+},
+{
+"riga": 12,
+"tipo": "bug",
+"gravita": "alta",
+"problema": "La condizione su `orders` nel WHERE scarta le righe con `o.status` NULL e trasforma la LEFT JOIN in una INNER JOIN: spariscono i clienti senza ordini.",
+"correzione": "Spostarla nella clausola ON: `ON o.customer_id = c.id AND o.status <> 'CANCELLED'`."
+},
+{
+"riga": 13,
+"tipo": "bug",
+"gravita": "media",
+"problema": "Se `created_at` è un timestamp, `'2026-01-31'` vale mezzanotte: si perdono le registrazioni del 31 gennaio.",
+"correzione": "Usare un intervallo semiaperto: `c.created_at >= '2026-01-01' AND c.created_at < '2026-02-01'`."
+}
+],
+"domanda_finale": "Come costruiresti un piccolo dataset di prova per dimostrare il bug della LEFT JOIN?"
+},
+{
+"id": "rev-22",
+"lang": "sql",
+"livello": 2,
+"titolo": "Statistiche corsi",
+"contesto": "Questa query mostra per ogni corso il numero di iscritti del 2026 e il voto medio; devono comparire anche i corsi senza iscritti.",
+"codice": "-- Per ogni corso: numero di iscritti del 2026 e voto medio.\n-- Devono comparire anche i corsi senza iscritti.\nSELECT\n    co.id,\n    co.title,\n    co.teacher_name,\n    COUNT(*) AS iscritti,\n    AVG(e.grade) AS media_voto\nFROM courses co\nLEFT JOIN enrollments e\n    ON e.course_id = co.id\nWHERE e.year = 2026\nGROUP BY\n    co.id\nHAVING AVG(e.grade) > 0\nORDER BY\n    3 DESC;",
+"problemi": [
+{
+"riga": 6,
+"tipo": "bug",
+"gravita": "media",
+"problema": "`title` e `teacher_name` non sono nel `GROUP BY`: errore in DBMS rigorosi (o dipende dalla dipendenza funzionale da `co.id`).",
+"correzione": "Raggrupparle esplicitamente: `GROUP BY co.id, co.title, co.teacher_name`."
+},
+{
+"riga": 7,
+"tipo": "bug",
+"gravita": "alta",
+"problema": "`COUNT(*)` conta anche la riga con NULL della LEFT JOIN: un corso senza iscritti risulta con 1 iscritto.",
+"correzione": "Contare una colonna della tabella destra: `COUNT(e.id)`."
+},
+{
+"riga": 12,
+"tipo": "bug",
+"gravita": "alta",
+"problema": "Il filtro su `e` nel WHERE elimina le righe NULL: i corsi senza iscritti spariscono.",
+"correzione": "Spostare la condizione nella ON: `ON e.course_id = co.id AND e.year = 2026`."
+},
+{
+"riga": 15,
+"tipo": "bug",
+"gravita": "media",
+"problema": "Esclude i corsi senza voti (media NULL), contro il requisito.",
+"correzione": "Togliere l'HAVING, o scrivere `HAVING AVG(e.grade) > 0 OR AVG(e.grade) IS NULL` se serve davvero."
+},
+{
+"riga": 17,
+"tipo": "leggibilita",
+"gravita": "media",
+"problema": "Ordinamento posizionale: la colonna 3 è `teacher_name`, non gli iscritti come probabilmente voluto.",
+"correzione": "Ordinare per nome: `ORDER BY iscritti DESC`."
+}
+],
+"domanda_finale": "Che differenza c'è tra WHERE e HAVING, e quando la condizione va invece nella ON?"
+},
+{
+"id": "rev-23",
+"lang": "sql",
+"livello": 3,
+"titolo": "Conferma ordine",
+"contesto": "Queste istruzioni vengono eseguite in sequenza dall'e-commerce per confermare un ordine di un prodotto (PostgreSQL, autocommit attivo).",
+"codice": "-- Eseguito dall'e-commerce per confermare un ordine.\n-- Connessione con autocommit attivo (PostgreSQL).\nUPDATE orders\nSET status = 'CONFIRMED'\nWHERE id = :order_id;\n\nSELECT quantity\nFROM stock\nWHERE product_id = :product_id;\n\n-- l'applicazione controlla qui che quantity >= :qty\n\nUPDATE stock\nSET quantity = :quantity_letta - :qty\nWHERE product_id = :product_id;\n\nINSERT INTO order_log (order_id, message, created_at)\nVALUES (:order_id, 'confermato', NOW());\n\nDELETE FROM cart_items\nWHERE customer_id = :customer_id;",
+"problemi": [
+{
+"riga": 3,
+"tipo": "bug",
+"gravita": "alta",
+"problema": "Nessuna transazione con autocommit: se un passo fallisce l'ordine resta confermato senza scalare il magazzino (o viceversa); inoltre si conferma prima di aver verificato la disponibilità.",
+"correzione": "Racchiudere tutto in `BEGIN; ... COMMIT;` e confermare l'ordine solo dopo aver scalato lo stock."
+},
+{
+"riga": 5,
+"tipo": "bug",
+"gravita": "media",
+"problema": "Non controlla lo stato attuale: un ordine annullato o già confermato viene (ri)confermato.",
+"correzione": "Aggiungere `AND status = 'PENDING'` e verificare che sia stata aggiornata esattamente una riga."
+},
+{
+"riga": 14,
+"tipo": "bug",
+"gravita": "alta",
+"problema": "Lost update: tra la SELECT e l'UPDATE un'altra transazione può vendere lo stesso pezzo, e il valore letto sovrascrive il suo aggiornamento.",
+"correzione": "Aggiornare in modo atomico: `SET quantity = quantity - :qty WHERE product_id = :product_id AND quantity >= :qty` e controllare le righe modificate (oppure `SELECT ... FOR UPDATE`)."
+},
+{
+"riga": 20,
+"tipo": "bug",
+"gravita": "media",
+"problema": "Svuota tutto il carrello del cliente, anche articoli aggiunti nel frattempo che non fanno parte dell'ordine.",
+"correzione": "Cancellare solo le righe dell'ordine, es. `WHERE customer_id = :customer_id AND product_id = :product_id`."
+}
+],
+"domanda_finale": "Quale livello di isolamento useresti e perché READ COMMITTED da solo non basta con la versione originale?"
+},
+{
+"id": "rev-24",
+"lang": "sql",
+"livello": 3,
+"titolo": "Utenti attivi senza newsletter",
+"contesto": "Questa query trova gli utenti con login negli ultimi 30 giorni che non hanno mai ricevuto la newsletter, con il numero totale di login. Tabelle: users (5M righe), logins (200M righe).",
+"codice": "-- Utenti attivi negli ultimi 30 giorni mai raggiunti dalla newsletter,\n-- con il numero di login. users: 5M righe, logins: 200M righe.\nSELECT DISTINCT\n    u.id,\n    u.email,\n    (SELECT COUNT(*)\n     FROM logins l2\n     WHERE l2.user_id = u.id) AS num_login\nFROM users u\nJOIN logins l\n    ON l.user_id = u.id\nWHERE DATE(l.logged_at) >= CURRENT_DATE - 30\n  AND u.id NOT IN (\n      SELECT n.user_id\n      FROM newsletter_sends n\n  )\nORDER BY num_login DESC;",
+"problemi": [
+{
+"riga": 3,
+"tipo": "prestazioni",
+"gravita": "media",
+"problema": "La JOIN moltiplica le righe per ogni login e il `DISTINCT` deve poi ordinarle e deduplicarle.",
+"correzione": "Verificare l'attività con `EXISTS (SELECT 1 FROM logins l WHERE l.user_id = u.id AND ...)` senza JOIN."
+},
+{
+"riga": 6,
+"tipo": "prestazioni",
+"gravita": "alta",
+"problema": "Subquery correlata eseguita per ogni riga del risultato su una tabella da 200M righe.",
+"correzione": "Calcolare i conteggi con un'unica aggregazione (`GROUP BY user_id`) in una CTE e unirla agli utenti."
+},
+{
+"riga": 11,
+"tipo": "prestazioni",
+"gravita": "media",
+"problema": "Senza un indice su `logins(user_id, logged_at)` sia la JOIN sia il conteggio fanno scansioni enormi.",
+"correzione": "Creare `CREATE INDEX idx_logins_user_time ON logins (user_id, logged_at);`."
+},
+{
+"riga": 12,
+"tipo": "prestazioni",
+"gravita": "media",
+"problema": "La funzione `DATE()` sulla colonna rende la condizione non sargable: l'indice su `logged_at` non viene usato.",
+"correzione": "Confrontare la colonna nuda: `l.logged_at >= CURRENT_DATE - INTERVAL '30 days'`."
+},
+{
+"riga": 13,
+"tipo": "bug",
+"gravita": "alta",
+"problema": "Se `newsletter_sends.user_id` contiene anche un solo NULL, `NOT IN` è sempre UNKNOWN e la query non restituisce nulla.",
+"correzione": "Usare `NOT EXISTS (SELECT 1 FROM newsletter_sends n WHERE n.user_id = u.id)`."
+}
+],
+"domanda_finale": "Come leggeresti il piano di esecuzione (EXPLAIN ANALYZE) per capire quale parte è più costosa?"
+}
+]

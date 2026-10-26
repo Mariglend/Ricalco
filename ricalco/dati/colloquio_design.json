@@ -1,0 +1,765 @@
+[
+{
+"id": "design-01",
+"livello": 1,
+"titolo": "Accorciatore di URL",
+"brief": "Progetta il backend di un servizio tipo bit.ly: l'utente incolla un URL lungo e riceve un link corto. Chi apre il link corto viene reindirizzato all'URL originale. Vogliamo anche sapere quante volte è stato cliccato ogni link.",
+"requisiti": [
+"Creare un link corto a partire da un URL valido",
+"Reindirizzare dal codice corto all'URL originale con HTTP 301/302",
+"Contare i clic per ogni link",
+"Il redirect deve rispondere in meno di 100 ms",
+"I codici corti non devono essere facilmente indovinabili in sequenza"
+],
+"sezioni": [
+"Entità e tabelle",
+"Endpoint REST",
+"Generazione del codice corto",
+"Casi limite",
+"Come cresce"
+],
+"griglia": [
+{
+"criterio": "Modello dei dati",
+"atteso": "Una tabella link con codice univoco indicizzato, URL originale, data di creazione e contatore o tabella clic separata.",
+"peso": 3
+},
+{
+"criterio": "Generazione del codice",
+"atteso": "Propone base62 su un id o codice casuale con controllo di collisione, e sa spiegare i pro e i contro.",
+"peso": 3
+},
+{
+"criterio": "API",
+"atteso": "Endpoint chiari: POST per creare, GET /{codice} che risponde con redirect, GET per le statistiche.",
+"peso": 2
+},
+{
+"criterio": "Validazione e casi limite",
+"atteso": "Valida l'URL, gestisce codice inesistente (404) e URL già accorciati o malevoli.",
+"peso": 2
+},
+{
+"criterio": "Prestazioni",
+"atteso": "Riconosce che le letture sono molte più delle scritture e propone una cache sul redirect.",
+"peso": 2
+},
+{
+"criterio": "Comunicazione",
+"atteso": "Fa domande sui volumi prima di disegnare e spiega le scelte in modo ordinato.",
+"peso": 1
+}
+],
+"soluzione": "- Tabelle: `link(id BIGINT PK, codice VARCHAR(10) UNIQUE, url_originale TEXT, creato_il TIMESTAMP, clic BIGINT DEFAULT 0)`\n- Codice: codifica base62 dell'id con un offset/permutazione, oppure 7 caratteri casuali base62 (62^7 ≈ 3,5 mila miliardi) con INSERT e retry se viola il vincolo UNIQUE.\n- Endpoint:\n  - `POST /api/links` body `{url}` → 201 `{codice, short_url}`\n  - `GET /{codice}` → 302 Location: url_originale (302 se vuoi contare ogni clic, 301 viene messo in cache dal browser)\n  - `GET /api/links/{codice}/stats` → `{clic, creato_il}`\n- Validazione: solo schemi http/https, lunghezza massima, rifiuto di domini in blacklist.\n- Contatore: `UPDATE link SET clic = clic + 1 WHERE codice = ?` (atomico); con traffico alto si accumula in memoria/Redis e si scrive a blocchi.\n- Cache: Redis o cache in memoria codice → url, perché le letture dominano.\n- Crescita: più istanze stateless dietro un load balancer, repliche in lettura del database.",
+"approfondimenti": [
+"Due utenti accorciano lo stesso URL: restituisci lo stesso codice o due codici diversi? Perché?",
+"Perché potresti preferire 302 a 301 per il redirect?",
+"Il contatore dei clic rallenta il redirect: come lo rendi asincrono?"
+]
+},
+{
+"id": "design-02",
+"livello": 1,
+"titolo": "Prenotazione campi da padel",
+"brief": "Progetta il backend di una app per prenotare i campi da padel di un circolo. Gli utenti vedono gli slot liberi di un giorno, prenotano un'ora e possono cancellare fino a 24 ore prima.",
+"requisiti": [
+"Vedere la disponibilità dei campi per una data",
+"Prenotare uno slot di un'ora su un campo",
+"Impedire le doppie prenotazioni dello stesso campo nello stesso slot",
+"Cancellare una prenotazione entro 24 ore dall'inizio",
+"Un utente può avere al massimo 2 prenotazioni future"
+],
+"sezioni": [
+"Entità e tabelle",
+"Endpoint REST",
+"Casi limite e concorrenza",
+"Come cresce"
+],
+"griglia": [
+{
+"criterio": "Modello dei dati",
+"atteso": "Tabelle utente, campo, prenotazione con inizio/fine e stato; chiavi esterne corrette.",
+"peso": 3
+},
+{
+"criterio": "Concorrenza",
+"atteso": "Usa un vincolo UNIQUE (campo, inizio) o un lock per impedire doppie prenotazioni, non solo un controllo applicativo.",
+"peso": 3
+},
+{
+"criterio": "API",
+"atteso": "Endpoint REST coerenti con codici di stato corretti (201, 409, 404, 403).",
+"peso": 2
+},
+{
+"criterio": "Regole di business",
+"atteso": "Implementa limite di 2 prenotazioni e finestra di cancellazione, con fusi orari chiari.",
+"peso": 2
+},
+{
+"criterio": "Casi limite",
+"atteso": "Considera slot nel passato, campo in manutenzione, utente che cancella due volte.",
+"peso": 1
+},
+{
+"criterio": "Comunicazione",
+"atteso": "Spiega il perché del vincolo nel database e i compromessi.",
+"peso": 1
+}
+],
+"soluzione": "- Tabelle:\n  - `utente(id, email UNIQUE, nome)`\n  - `campo(id, nome, attivo BOOLEAN)`\n  - `prenotazione(id, campo_id FK, utente_id FK, inizio TIMESTAMP, fine TIMESTAMP, stato ENUM('ATTIVA','CANCELLATA'), creata_il)`\n  - indice univoco parziale `UNIQUE(campo_id, inizio) WHERE stato='ATTIVA'` (PostgreSQL)\n- Endpoint:\n  - `GET /api/campi/disponibilita?data=2026-11-03` → slot liberi per campo\n  - `POST /api/prenotazioni` body `{campo_id, inizio}` → 201, oppure 409 se lo slot è preso\n  - `DELETE /api/prenotazioni/{id}` → 204, 403 se mancano meno di 24 h o non è tua\n  - `GET /api/utenti/me/prenotazioni`\n- Concorrenza: l'INSERT fallisce sul vincolo univoco e il servizio traduce l'errore in 409.\n- Limite di 2: conteggio dentro la stessa transazione; per sicurezza `SELECT ... FOR UPDATE` sulla riga utente.\n- Orari salvati in UTC, convertiti nel fuso del circolo per la visualizzazione.\n- Crescita: poche scritture, carico basso; basta un database con indice su (campo_id, inizio).",
+"approfondimenti": [
+"Due utenti prenotano lo stesso campo nello stesso istante: cosa succede esattamente nel tuo sistema?",
+"Il circolo vuole slot da 90 minuti: cosa cambia nel modello?",
+"Come gestiresti il cambio dell'ora legale?"
+]
+},
+{
+"id": "design-03",
+"livello": 1,
+"titolo": "Gestione biblioteca",
+"brief": "Progetta il backend per la biblioteca di un'università. I bibliotecari inseriscono libri e copie, gli studenti prendono in prestito le copie per 30 giorni e possono prenotare un libro se tutte le copie sono in prestito.",
+"requisiti": [
+"Catalogo di libri con più copie fisiche per titolo",
+"Prestito di una copia per 30 giorni, massimo 5 prestiti attivi per studente",
+"Restituzione e calcolo dei ritardi",
+"Coda di prenotazioni quando non ci sono copie libere",
+"Ricerca per titolo, autore o ISBN"
+],
+"sezioni": [
+"Entità e tabelle",
+"Endpoint REST",
+"Regole e casi limite",
+"Ricerca"
+],
+"griglia": [
+{
+"criterio": "Modello dei dati",
+"atteso": "Distingue libro (titolo) da copia (oggetto fisico) e modella il prestito come entità con date.",
+"peso": 3
+},
+{
+"criterio": "Regole di business",
+"atteso": "Gestisce limite di prestiti, scadenza, ritardi e coda di prenotazione in ordine di arrivo.",
+"peso": 2
+},
+{
+"criterio": "API",
+"atteso": "Risorse REST chiare per libri, copie, prestiti e prenotazioni.",
+"peso": 2
+},
+{
+"criterio": "Integrità",
+"atteso": "Una copia non può avere due prestiti aperti: vincolo o transazione.",
+"peso": 2
+},
+{
+"criterio": "Ricerca",
+"atteso": "Indici adeguati o full-text search per titolo/autore.",
+"peso": 1
+}
+],
+"soluzione": "- Tabelle:\n  - `libro(id, isbn UNIQUE, titolo, autore, anno)`\n  - `copia(id, libro_id FK, codice_inventario UNIQUE, stato ENUM('DISPONIBILE','IN_PRESTITO','PERSA'))`\n  - `studente(id, matricola UNIQUE, email)`\n  - `prestito(id, copia_id FK, studente_id FK, inizio DATE, scadenza DATE, restituito_il DATE NULL)` con `UNIQUE(copia_id) WHERE restituito_il IS NULL`\n  - `prenotazione(id, libro_id FK, studente_id FK, creata_il, stato)`\n- Endpoint:\n  - `GET /api/libri?q=calcolo` (ricerca)\n  - `POST /api/prestiti` body `{copia_id, studente_id}` → 201 o 409\n  - `POST /api/prestiti/{id}/restituzione` → aggiorna data e libera la copia\n  - `POST /api/libri/{id}/prenotazioni`\n- Alla restituzione: se esiste una prenotazione in attesa, la copia passa a «riservata» per il primo in coda e si notifica lo studente.\n- Ritardo: calcolato come `restituito_il - scadenza` o, per i prestiti aperti, con una query giornaliera.\n- Ricerca: indice su isbn, full-text (PostgreSQL tsvector) su titolo e autore.",
+"approfondimenti": [
+"Uno studente prenota un libro e poi non viene a ritirarlo: come gestisci la coda?",
+"Perché hai separato libro e copia invece di avere un campo «quantità»?",
+"Come trovi tutti i prestiti in ritardo in modo efficiente?"
+]
+},
+{
+"id": "design-04",
+"livello": 1,
+"titolo": "Sistema di sondaggi e voti",
+"brief": "Progetta il backend di un servizio di sondaggi: un utente crea una domanda con più opzioni, condivide il link e gli altri votano. I risultati si vedono in tempo quasi reale.",
+"requisiti": [
+"Creare un sondaggio con 2-10 opzioni e una data di chiusura",
+"Ogni utente registrato vota una sola volta per sondaggio",
+"Mostrare i risultati aggiornati con percentuali",
+"Chiudere automaticamente il sondaggio alla scadenza",
+"Reggere picchi di migliaia di voti al minuto"
+],
+"sezioni": [
+"Entità e tabelle",
+"Endpoint REST",
+"Un voto per utente",
+"Conteggio dei risultati"
+],
+"griglia": [
+{
+"criterio": "Modello dei dati",
+"atteso": "Tabelle sondaggio, opzione, voto con vincolo univoco (sondaggio, utente).",
+"peso": 3
+},
+{
+"criterio": "Unicità del voto",
+"atteso": "Garantisce un voto per utente con vincolo nel database, non solo con un controllo prima dell'INSERT.",
+"peso": 3
+},
+{
+"criterio": "Conteggio",
+"atteso": "Sa scegliere tra COUNT al volo e contatori pre-aggregati, motivando.",
+"peso": 2
+},
+{
+"criterio": "API",
+"atteso": "Endpoint coerenti e gestione di sondaggio chiuso (409 o 403).",
+"peso": 1
+},
+{
+"criterio": "Casi limite",
+"atteso": "Opzione inesistente, voto dopo la chiusura, modifica del voto.",
+"peso": 1
+}
+],
+"soluzione": "- Tabelle:\n  - `sondaggio(id, autore_id, domanda, chiude_il TIMESTAMP)`\n  - `opzione(id, sondaggio_id FK, testo, voti INT DEFAULT 0)`\n  - `voto(sondaggio_id, utente_id, opzione_id, creato_il, PRIMARY KEY(sondaggio_id, utente_id))`\n- Endpoint:\n  - `POST /api/sondaggi` → 201\n  - `POST /api/sondaggi/{id}/voti` body `{opzione_id}` → 201, 409 se hai già votato, 403 se chiuso\n  - `GET /api/sondaggi/{id}/risultati` → conteggi e percentuali\n- Voto in una transazione: INSERT in voto (la PK impedisce il doppio voto) + `UPDATE opzione SET voti = voti + 1`.\n- Chiusura: nessun job necessario, basta confrontare `now()` con `chiude_il` a ogni voto.\n- Risultati quasi in tempo reale: il client fa polling ogni pochi secondi; i risultati possono stare in cache 2-3 secondi.\n- Con picchi forti: contatori in Redis (INCR) e riconciliazione periodica con il database.",
+"approfondimenti": [
+"Un utente apre due schede e clicca «vota» due volte nello stesso istante: cosa succede?",
+"Vuoi permettere di cambiare il voto: come modifichi la transazione?",
+"Il sondaggio è anonimo, senza login: come limiti i voti multipli e quali sono i limiti di ogni soluzione?"
+]
+},
+{
+"id": "design-05",
+"livello": 1,
+"titolo": "Contatore di visite",
+"brief": "Un sito di notizie vuole mostrare sotto ogni articolo «letto da N persone». Progetta il servizio che registra le visualizzazioni e restituisce il conteggio. Il sito ha circa 2 milioni di visualizzazioni al giorno.",
+"requisiti": [
+"Registrare ogni visualizzazione di un articolo",
+"Restituire il totale delle visualizzazioni di un articolo",
+"Mostrare la classifica dei 10 articoli più letti nelle ultime 24 ore",
+"La registrazione non deve rallentare il caricamento della pagina",
+"Un piccolo errore nel conteggio è accettabile"
+],
+"sezioni": [
+"Entità e tabelle",
+"Endpoint",
+"Scritture frequenti",
+"Classifica",
+"Come cresce"
+],
+"griglia": [
+{
+"criterio": "Stima del carico",
+"atteso": "Calcola il carico medio (~23 al secondo) e considera i picchi, ad esempio 10 volte tanto.",
+"peso": 2
+},
+{
+"criterio": "Gestione delle scritture",
+"atteso": "Evita un UPDATE sincrono per ogni visita su riga calda: usa INCR in Redis o batch.",
+"peso": 3
+},
+{
+"criterio": "Modello dei dati",
+"atteso": "Totali per articolo e aggregati per ora o giorno per la classifica.",
+"peso": 2
+},
+{
+"criterio": "Classifica",
+"atteso": "Usa un sorted set o una query su aggregati orari, non una scansione di tutti i log.",
+"peso": 2
+},
+{
+"criterio": "Compromessi",
+"atteso": "Dichiara che accetta un po' di perdita in cambio di velocità e spiega cosa succede se Redis cade.",
+"peso": 1
+}
+],
+"soluzione": "- Carico: 2 M/giorno ≈ 23 richieste al secondo di media, picchi di qualche centinaio: gestibile, ma non con lock su una riga calda.\n- Endpoint:\n  - `POST /api/articoli/{id}/visite` → 202 Accepted, inviato dal browser in modo asincrono\n  - `GET /api/articoli/{id}/visite` → `{totale}`\n  - `GET /api/classifica?finestra=24h`\n- Scrittura: `INCR visite:{id}` in Redis + `ZINCRBY classifica:{ora} 1 {id}`.\n- Un job ogni minuto copia i contatori nel database: `visite_articolo(articolo_id PK, totale BIGINT)` e `visite_orarie(articolo_id, ora, conteggio, PK(articolo_id, ora))`.\n- Classifica 24 h: unione degli ultimi 24 sorted set orari (ZUNIONSTORE) e lettura dei primi 10, in cache per un minuto.\n- Se Redis si riavvia si perdono al massimo i conteggi dell'ultimo minuto: accettabile per i requisiti.\n- Bot: filtro di base sullo user agent; per contare persone uniche servirebbe HyperLogLog.",
+"approfondimenti": [
+"Vuoi contare i lettori unici e non le visualizzazioni: cosa cambia?",
+"Perché non fai semplicemente UPDATE articolo SET visite = visite + 1 a ogni richiesta?",
+"Il job di sincronizzazione fallisce per un'ora: cosa vede l'utente e cosa perdi?"
+]
+},
+{
+"id": "design-06",
+"livello": 2,
+"titolo": "Carrello e checkout e-commerce",
+"brief": "Progetta il backend del carrello e del checkout per un piccolo e-commerce di abbigliamento. L'utente aggiunge prodotti al carrello, poi fa il checkout e paga con un provider esterno (es. Stripe).",
+"requisiti": [
+"Aggiungere, modificare e rimuovere articoli dal carrello",
+"Il carrello sopravvive al logout e funziona anche da ospite",
+"Al checkout verificare disponibilità e prezzo aggiornati",
+"Non vendere più pezzi di quelli in magazzino",
+"Il pagamento è gestito da un provider esterno con webhook di conferma"
+],
+"sezioni": [
+"Entità e tabelle",
+"Endpoint REST",
+"Gestione del magazzino",
+"Flusso di pagamento",
+"Casi limite"
+],
+"griglia": [
+{
+"criterio": "Modello dei dati",
+"atteso": "Separa carrello, ordine e righe d'ordine; salva il prezzo al momento dell'ordine.",
+"peso": 3
+},
+{
+"criterio": "Magazzino e concorrenza",
+"atteso": "Decrementa lo stock con UPDATE condizionale o lock, evitando di vendere più del disponibile.",
+"peso": 3
+},
+{
+"criterio": "Flusso di pagamento",
+"atteso": "Ordine in stato IN_ATTESA, conferma tramite webhook, gestione di pagamento fallito o abbandonato.",
+"peso": 2
+},
+{
+"criterio": "Idempotenza",
+"atteso": "Rende il checkout e il webhook idempotenti (chiave di idempotenza, controllo dello stato).",
+"peso": 2
+},
+{
+"criterio": "API",
+"atteso": "Endpoint chiari per carrello e ordini con codici di stato corretti.",
+"peso": 1
+},
+{
+"criterio": "Comunicazione",
+"atteso": "Chiarisce i requisiti, ad esempio carrello ospite e durata della riserva.",
+"peso": 1
+}
+],
+"soluzione": "- Tabelle:\n  - `prodotto(id, nome, prezzo_cent INT, stock INT)`\n  - `carrello(id, utente_id NULL, token_ospite NULL, aggiornato_il)`\n  - `riga_carrello(carrello_id, prodotto_id, quantita, PK(carrello_id, prodotto_id))`\n  - `ordine(id, utente_id, stato ENUM('IN_ATTESA','PAGATO','ANNULLATO'), totale_cent, payment_intent_id, creato_il)`\n  - `riga_ordine(ordine_id, prodotto_id, quantita, prezzo_unitario_cent)`\n- Endpoint:\n  - `PUT /api/carrello/righe/{prodotto_id}` body `{quantita}`; `DELETE /api/carrello/righe/{prodotto_id}`\n  - `POST /api/ordini` con header `Idempotency-Key` → crea l'ordine e restituisce il client secret del pagamento\n  - `POST /api/webhook/pagamenti` → firma verificata, porta l'ordine a PAGATO\n- Stock: in transazione, per ogni riga `UPDATE prodotto SET stock = stock - :q WHERE id = :id AND stock >= :q`; se aggiorna 0 righe → rollback e 409.\n- Ordini IN_ATTESA da più di 30 minuti: un job li annulla e restituisce lo stock.\n- Prezzi in centesimi interi, mai in float.\n- Al login il carrello ospite viene unito a quello dell'utente.",
+"approfondimenti": [
+"Il webhook di Stripe arriva due volte: cosa succede nel tuo sistema?",
+"Riservi lo stock quando l'utente entra nel checkout o solo quando ha pagato? Pro e contro.",
+"Il prezzo di un prodotto cambia mentre è nel carrello: cosa paga l'utente?"
+]
+},
+{
+"id": "design-07",
+"livello": 2,
+"titolo": "Chat semplice uno a uno",
+"brief": "Progetta il backend di una chat uno a uno per un'app di annunci: compratore e venditore si scrivono a proposito di un annuncio. I messaggi devono arrivare in tempo reale se l'altro è online e restare nello storico.",
+"requisiti": [
+"Inviare e ricevere messaggi in tempo reale",
+"Vedere lo storico di una conversazione con paginazione",
+"Indicatore dei messaggi non letti",
+"I messaggi non devono andare persi né duplicarsi",
+"Funzionare con più istanze del server"
+],
+"sezioni": [
+"Entità e tabelle",
+"API REST e WebSocket",
+"Consegna in tempo reale",
+"Casi limite",
+"Come cresce"
+],
+"griglia": [
+{
+"criterio": "Modello dei dati",
+"atteso": "Conversazione legata a annuncio e due partecipanti, messaggi con indice su (conversazione, data).",
+"peso": 3
+},
+{
+"criterio": "Tempo reale",
+"atteso": "Usa WebSocket (o SSE/long polling) e sa perché HTTP classico non basta.",
+"peso": 2
+},
+{
+"criterio": "Più istanze",
+"atteso": "Capisce che i due utenti possono essere connessi a server diversi e propone pub/sub (es. Redis).",
+"peso": 3
+},
+{
+"criterio": "Affidabilità",
+"atteso": "Salva il messaggio prima di inoltrarlo e usa un id generato dal client per evitare duplicati.",
+"peso": 2
+},
+{
+"criterio": "Paginazione",
+"atteso": "Paginazione a cursore sui messaggi, non OFFSET.",
+"peso": 1
+},
+{
+"criterio": "Letti/non letti",
+"atteso": "Tiene l'ultimo messaggio letto per partecipante invece di un flag per messaggio.",
+"peso": 1
+}
+],
+"soluzione": "- Tabelle:\n  - `conversazione(id, annuncio_id, compratore_id, venditore_id, UNIQUE(annuncio_id, compratore_id))`\n  - `messaggio(id BIGSERIAL, conversazione_id, mittente_id, testo, client_msg_id UUID, creato_il, UNIQUE(conversazione_id, client_msg_id))`\n  - `lettura(conversazione_id, utente_id, ultimo_letto_id)`\n  - indice `(conversazione_id, id DESC)`\n- REST:\n  - `GET /api/conversazioni` → elenco con conteggio non letti\n  - `GET /api/conversazioni/{id}/messaggi?prima_di={id}&limit=30`\n  - `POST /api/conversazioni/{id}/messaggi` (fallback senza WebSocket)\n- WebSocket `/ws`: il client invia `{conversazione_id, client_msg_id, testo}`; il server salva, poi pubblica su Redis canale `utente:{destinatario}`; ogni istanza inoltra ai propri socket connessi.\n- Il client riceve un ack con l'id definitivo; se non arriva ritenta con lo stesso client_msg_id (nessun duplicato grazie al vincolo).\n- Destinatario offline: il messaggio è nel database, lo vedrà al prossimo caricamento; eventuale notifica push.\n- Crescita: istanze stateless + Redis pub/sub; molto più avanti partizionare i messaggi per conversazione.",
+"approfondimenti": [
+"L'utente A è connesso al server 1 e B al server 2: come arriva il messaggio?",
+"La connessione cade subito dopo l'invio: come fa il client a sapere se il messaggio è stato salvato?",
+"Come calcoli il numero di messaggi non letti senza contare tutta la tabella ogni volta?"
+]
+},
+{
+"id": "design-08",
+"livello": 2,
+"titolo": "Feed di post con paginazione",
+"brief": "Progetta l'API del feed di un piccolo social per appassionati di corsa: ogni utente segue altri utenti e vede i loro post in ordine cronologico, con scroll infinito.",
+"requisiti": [
+"Pubblicare post di testo con una foto opzionale",
+"Seguire e smettere di seguire altri utenti",
+"Feed cronologico dei post delle persone seguite",
+"Scroll infinito senza duplicati né post saltati",
+"Il feed deve caricarsi in meno di 300 ms"
+],
+"sezioni": [
+"Entità e tabelle",
+"Endpoint REST",
+"Paginazione",
+"Costruzione del feed",
+"Come cresce"
+],
+"griglia": [
+{
+"criterio": "Modello dei dati",
+"atteso": "Tabelle utente, post, follow con indici corretti (autore, data).",
+"peso": 2
+},
+{
+"criterio": "Paginazione",
+"atteso": "Usa la paginazione a cursore (data + id) e spiega perché OFFSET dà duplicati e diventa lenta.",
+"peso": 3
+},
+{
+"criterio": "Costruzione del feed",
+"atteso": "Parte dal fan-out in lettura con una JOIN e conosce l'alternativa fan-out in scrittura.",
+"peso": 3
+},
+{
+"criterio": "API",
+"atteso": "Endpoint chiari con cursore opaco nella risposta.",
+"peso": 1
+},
+{
+"criterio": "Prestazioni",
+"atteso": "Indici, limite di pagina, cache per i primi elementi.",
+"peso": 1
+}
+],
+"soluzione": "- Tabelle:\n  - `utente(id, username UNIQUE)`\n  - `post(id BIGSERIAL, autore_id, testo, foto_url NULL, creato_il)` + indice `(autore_id, creato_il DESC, id DESC)`\n  - `follow(follower_id, seguito_id, PK(follower_id, seguito_id))`\n- Endpoint:\n  - `POST /api/post`; `PUT /api/utenti/{id}/follow`; `DELETE /api/utenti/{id}/follow`\n  - `GET /api/feed?cursor=...&limit=20` → `{post: [...], next_cursor}`\n- Query (fan-out in lettura):\n  `SELECT p.* FROM post p JOIN follow f ON f.seguito_id = p.autore_id WHERE f.follower_id = :me AND (p.creato_il, p.id) < (:c_data, :c_id) ORDER BY p.creato_il DESC, p.id DESC LIMIT 20`\n- Cursore = base64 di (creato_il, id) dell'ultimo post restituito: stabile anche se arrivano post nuovi.\n- OFFSET da evitare: se escono post nuovi la pagina successiva ripete elementi, e con offset alti il database scansiona tutto.\n- Crescita: fan-out in scrittura (alla pubblicazione si inserisce l'id del post nella lista Redis di ogni follower), eccezione per utenti con moltissimi follower.",
+"approfondimenti": [
+"Un post viene cancellato mentre l'utente scorre: cosa succede con il tuo cursore?",
+"Un utente con 500.000 follower pubblica un post: come si comporta il fan-out in scrittura?",
+"Perché nel cursore metti anche l'id oltre alla data?"
+]
+},
+{
+"id": "design-09",
+"livello": 2,
+"titolo": "Login con sessioni o JWT",
+"brief": "Progetta il sistema di autenticazione per una web app con frontend React e backend Spring Boot: registrazione, login, logout e accesso alle API protette. Spiega se useresti sessioni o JWT e perché.",
+"requisiti": [
+"Registrazione con email e password",
+"Login e accesso alle API protette",
+"Logout che invalida davvero l'accesso",
+"Password salvate in modo sicuro",
+"Protezione da tentativi di forza bruta"
+],
+"sezioni": [
+"Entità e tabelle",
+"Endpoint",
+"Sessioni vs JWT",
+"Sicurezza",
+"Casi limite"
+],
+"griglia": [
+{
+"criterio": "Password",
+"atteso": "Usa bcrypt o Argon2 con salt; mai hash veloci come MD5/SHA-256 da soli.",
+"peso": 3
+},
+{
+"criterio": "Scelta sessioni/JWT",
+"atteso": "Confronta i due approcci in modo corretto, in particolare sulla revoca.",
+"peso": 3
+},
+{
+"criterio": "Trasporto del token",
+"atteso": "Cookie HttpOnly, Secure, SameSite oppure header, e conosce i rischi XSS e CSRF.",
+"peso": 2
+},
+{
+"criterio": "Forza bruta",
+"atteso": "Limite di tentativi per account e IP, messaggi di errore non rivelatori.",
+"peso": 2
+},
+{
+"criterio": "API",
+"atteso": "Endpoint chiari e codici 401/403 usati correttamente.",
+"peso": 1
+}
+],
+"soluzione": "- Tabelle:\n  - `utente(id, email UNIQUE, password_hash, creato_il, verificato BOOLEAN)`\n  - `refresh_token(id, utente_id, token_hash, scade_il, revocato BOOLEAN)`\n- Endpoint:\n  - `POST /api/auth/registrazione` → 201\n  - `POST /api/auth/login` → imposta i cookie\n  - `POST /api/auth/refresh` → nuovo access token\n  - `POST /api/auth/logout` → revoca il refresh token e cancella i cookie\n- Password: BCrypt (BCryptPasswordEncoder in Spring Security) con costo 10-12.\n- Scelta: access JWT breve (15 min) + refresh token opaco salvato nel database (revocabile). In alternativa, per una sola app, la sessione lato server in Redis è più semplice e la revoca è immediata.\n- Token in cookie HttpOnly + Secure + SameSite=Lax: il JavaScript non li legge (meno rischio XSS); SameSite riduce il CSRF.\n- Login: messaggio generico «credenziali non valide»; rate limit di 5 tentativi per email ogni 15 minuti.\n- 401 = non autenticato, 403 = autenticato ma senza permesso.",
+"approfondimenti": [
+"Un JWT è stato rubato: come lo revochi prima della scadenza?",
+"Dove salvi il token nel browser e perché non in localStorage?",
+"L'utente cambia password: cosa succede alle altre sessioni aperte?"
+]
+},
+{
+"id": "design-10",
+"livello": 2,
+"titolo": "Upload di file",
+"brief": "Progetta il servizio che permette agli utenti di un gestionale di caricare documenti PDF e immagini (fino a 20 MB) e di scaricarli in seguito. Solo il proprietario e chi ha un link condiviso possono accedervi.",
+"requisiti": [
+"Caricare file fino a 20 MB (PDF, JPG, PNG)",
+"Scaricare i propri file",
+"Condividere un file con un link a scadenza",
+"Non salvare i file nel database relazionale",
+"Controllare tipo e dimensione del file"
+],
+"sezioni": [
+"Entità e tabelle",
+"Endpoint",
+"Dove salvi i file",
+"Sicurezza",
+"Come cresce"
+],
+"griglia": [
+{
+"criterio": "Archiviazione",
+"atteso": "Metadati nel database, contenuto su object storage (S3 o compatibile) o disco, con motivazione.",
+"peso": 3
+},
+{
+"criterio": "Upload",
+"atteso": "Conosce l'upload tramite URL prefirmato o in streaming, senza caricare tutto in memoria.",
+"peso": 2
+},
+{
+"criterio": "Sicurezza",
+"atteso": "Valida tipo reale (magic bytes) e dimensione, nomi file generati, controllo dei permessi a ogni download.",
+"peso": 3
+},
+{
+"criterio": "Condivisione",
+"atteso": "Link con token casuale e scadenza, revocabile.",
+"peso": 2
+},
+{
+"criterio": "Modello dei dati",
+"atteso": "Tabella file con proprietario, chiave di storage, dimensione, tipo, stato.",
+"peso": 1
+}
+],
+"soluzione": "- Tabelle:\n  - `file(id UUID, proprietario_id, nome_originale, chiave_storage, mime, dimensione, stato ENUM('IN_CARICAMENTO','PRONTO'), creato_il)`\n  - `condivisione(token CHAR(43) PK, file_id, scade_il, revocata BOOLEAN)`\n- Flusso con URL prefirmato:\n  - `POST /api/file` body `{nome, mime, dimensione}` → controlla limiti, crea riga IN_CARICAMENTO, restituisce URL di upload prefirmato S3 valido 10 minuti\n  - il client carica direttamente su S3\n  - `POST /api/file/{id}/completa` → il server verifica che l'oggetto esista, dimensione e magic bytes, poi stato PRONTO\n- Download: `GET /api/file/{id}` → controlla il proprietario, risponde 302 verso un URL prefirmato di download breve.\n- Condivisione: `POST /api/file/{id}/condivisioni` → token casuale da 32 byte; `GET /s/{token}` verifica scadenza e revoca.\n- Chiave di storage generata (UUID), mai il nome scelto dall'utente: evita path traversal e collisioni.\n- Senza S3: disco fuori dalla web root e upload in streaming (multipart con limite in Spring `spring.servlet.multipart.max-file-size`).\n- Pulizia: job che elimina file IN_CARICAMENTO più vecchi di un giorno.",
+"approfondimenti": [
+"Perché non salvi il file come BLOB nella tabella?",
+"Un utente rinomina un .exe in .pdf: come te ne accorgi?",
+"Come rendi lo storage conforme al GDPR quando un utente chiede la cancellazione?"
+]
+},
+{
+"id": "design-11",
+"livello": 2,
+"titolo": "Notifiche email",
+"brief": "Progetta il servizio che invia le email transazionali di una piattaforma: conferma registrazione, reset password, ricevuta d'ordine. Oggi le email partono dentro la richiesta HTTP e a volte il provider è lento o non risponde.",
+"requisiti": [
+"Inviare email senza bloccare la richiesta dell'utente",
+"Ritentare se il provider fallisce",
+"Non inviare la stessa email due volte",
+"Template diversi per tipo di email",
+"Poter vedere lo stato di ogni email inviata"
+],
+"sezioni": [
+"Entità e tabelle",
+"Architettura asincrona",
+"Ritentativi e duplicati",
+"Monitoraggio"
+],
+"griglia": [
+{
+"criterio": "Asincronia",
+"atteso": "Toglie l'invio dalla richiesta HTTP con una coda o una tabella outbox.",
+"peso": 3
+},
+{
+"criterio": "Affidabilità",
+"atteso": "Pattern outbox: la richiesta di email si salva nella stessa transazione dell'evento di business.",
+"peso": 2
+},
+{
+"criterio": "Ritentativi",
+"atteso": "Retry con backoff esponenziale e limite massimo, poi stato FALLITA.",
+"peso": 2
+},
+{
+"criterio": "Idempotenza",
+"atteso": "Chiave univoca per evento per evitare doppi invii.",
+"peso": 2
+},
+{
+"criterio": "Monitoraggio",
+"atteso": "Stato per email, log, allarme se la coda cresce.",
+"peso": 1
+}
+],
+"soluzione": "- Tabella: `email_outbox(id, chiave_idempotenza UNIQUE, destinatario, template, parametri JSONB, stato ENUM('DA_INVIARE','INVIATA','FALLITA'), tentativi INT, prossimo_tentativo TIMESTAMP, errore TEXT)`\n- Nella stessa transazione che crea l'ordine: `INSERT INTO email_outbox(chiave='ricevuta-ordine-'||ordine_id, ...)`.\n- Worker (job schedulato ogni pochi secondi o consumer di coda):\n  `SELECT ... WHERE stato='DA_INVIARE' AND prossimo_tentativo <= now() ORDER BY id LIMIT 50 FOR UPDATE SKIP LOCKED`\n  invia, poi stato INVIATA; in errore `tentativi+1`, `prossimo_tentativo = now() + 2^tentativi minuti`; dopo 6 tentativi FALLITA.\n- `SKIP LOCKED` permette più worker in parallelo senza che prendano la stessa riga.\n- Template: Thymeleaf/FreeMarker con parametri dal JSON.\n- Endpoint interno: `GET /admin/email?stato=FALLITA`; metrica sulla lunghezza della coda con allarme.\n- Crescita: sostituire il polling con RabbitMQ/SQS mantenendo l'outbox per non perdere eventi.",
+"approfondimenti": [
+"Il worker invia l'email ma crasha prima di segnarla INVIATA: cosa succede?",
+"Perché non pubblichi direttamente su una coda dopo il commit dell'ordine?",
+"Il reset password deve arrivare subito, la newsletter no: come gestisci le priorità?"
+]
+},
+{
+"id": "design-12",
+"livello": 3,
+"titolo": "Rate limiter per un'API pubblica",
+"brief": "La nostra API pubblica viene abusata da alcuni client. Progetta un rate limiter: ogni chiave API può fare al massimo 100 richieste al minuto. Il backend gira su 4 istanze dietro un load balancer.",
+"requisiti": [
+"Limite di 100 richieste al minuto per chiave API",
+"Funzionare con 4 istanze del servizio",
+"Rispondere 429 con l'indicazione di quando riprovare",
+"Aggiungere al massimo pochi millisecondi di latenza",
+"Limiti diversi per piani diversi (free, pro)"
+],
+"sezioni": [
+"Algoritmo",
+"Dove salvi i contatori",
+"Risposta al client",
+"Casi limite",
+"Come cresce"
+],
+"griglia": [
+{
+"criterio": "Algoritmo",
+"atteso": "Conosce almeno finestra fissa e token bucket o finestra scorrevole, con pro e contro.",
+"peso": 3
+},
+{
+"criterio": "Stato condiviso",
+"atteso": "Capisce che un contatore in memoria per istanza non basta con 4 istanze e usa Redis.",
+"peso": 3
+},
+{
+"criterio": "Atomicità",
+"atteso": "Usa operazioni atomiche (INCR + EXPIRE, script Lua) per evitare race condition.",
+"peso": 2
+},
+{
+"criterio": "Risposta HTTP",
+"atteso": "429 con header Retry-After e X-RateLimit-Remaining.",
+"peso": 1
+},
+{
+"criterio": "Guasti",
+"atteso": "Decide cosa fare se Redis non risponde (fail open o fail closed) e motiva.",
+"peso": 2
+}
+],
+"soluzione": "- Algoritmo base, finestra fissa: chiave Redis `rl:{api_key}:{minuto_corrente}`.\n  `n = INCR chiave`; se n == 1 allora `EXPIRE chiave 60`; se n > limite → 429.\n  Difetto: fino a 200 richieste a cavallo di due minuti.\n- Versione migliore, token bucket in uno script Lua (atomico): salva `token` e `ultimo_refill`, ricarica 100/60 token al secondo, consuma 1 per richiesta.\n- Implementazione: filtro (OncePerRequestFilter in Spring) prima dei controller, oppure al gateway (NGINX, Spring Cloud Gateway).\n- Limiti per piano: tabella `api_key(chiave_hash, cliente_id, piano)` letta e messa in cache in memoria per qualche minuto.\n- Risposta: `429 Too Many Requests`, header `Retry-After: 12`, e su tutte le risposte `X-RateLimit-Limit` e `X-RateLimit-Remaining`.\n- Redis giù: fail open (lasciare passare) con log e allarme, per non bloccare tutti i clienti; per endpoint sensibili come il login, fail closed.\n- Latenza: un round trip verso Redis nella stessa rete, circa 1 ms.",
+"approfondimenti": [
+"Spiega il problema della finestra fissa al confine tra due minuti e come lo risolvi.",
+"Perché un contatore in una HashMap di ogni istanza non funziona qui?",
+"Vuoi anche un limite per IP sugli endpoint senza chiave: cosa cambia?"
+]
+},
+{
+"id": "design-13",
+"livello": 3,
+"titolo": "Coda di lavori in background",
+"brief": "Progetta un sistema per eseguire lavori lunghi in background: gli utenti chiedono un report PDF che richiede da 10 secondi a 5 minuti per essere generato. L'utente deve poter vedere lo stato e scaricare il risultato.",
+"requisiti": [
+"Mettere in coda un lavoro e rispondere subito all'utente",
+"Vedere lo stato: in attesa, in corso, completato, fallito",
+"Più worker in parallelo senza eseguire due volte lo stesso lavoro",
+"Ritentare i lavori falliti e recuperare quelli di un worker morto",
+"Limitare a 3 lavori contemporanei per utente"
+],
+"sezioni": [
+"Entità e tabelle",
+"Endpoint",
+"Worker e concorrenza",
+"Guasti",
+"Come cresce"
+],
+"griglia": [
+{
+"criterio": "API asincrona",
+"atteso": "POST che risponde 202 con l'id del lavoro e endpoint di stato (polling) o notifica.",
+"peso": 2
+},
+{
+"criterio": "Presa in carico",
+"atteso": "Evita che due worker prendano lo stesso lavoro: SKIP LOCKED, UPDATE condizionale o broker.",
+"peso": 3
+},
+{
+"criterio": "Worker morti",
+"atteso": "Heartbeat o timeout di visibilità per rimettere in coda i lavori bloccati.",
+"peso": 3
+},
+{
+"criterio": "Ritentativi",
+"atteso": "Numero massimo di tentativi, backoff, lavoro idempotente.",
+"peso": 2
+},
+{
+"criterio": "Modello dei dati",
+"atteso": "Tabella lavoro con stato, tentativi, timestamp, risultato.",
+"peso": 1
+},
+{
+"criterio": "Equità",
+"atteso": "Rispetta il limite per utente senza bloccare gli altri.",
+"peso": 1
+}
+],
+"soluzione": "- Tabella: `lavoro(id UUID, utente_id, tipo, parametri JSONB, stato ENUM('IN_ATTESA','IN_CORSO','COMPLETATO','FALLITO'), tentativi, worker_id, heartbeat_il, risultato_url, errore, creato_il)` + indice `(stato, creato_il)`.\n- Endpoint:\n  - `POST /api/report` → 202 `{lavoro_id}` (429 se l'utente ha già 3 lavori attivi)\n  - `GET /api/lavori/{id}` → stato e, se completato, link di download\n- Presa in carico, in transazione:\n  `UPDATE lavoro SET stato='IN_CORSO', worker_id=:w, heartbeat_il=now() WHERE id = (SELECT id FROM lavoro WHERE stato='IN_ATTESA' ORDER BY creato_il LIMIT 1 FOR UPDATE SKIP LOCKED) RETURNING *`\n- Il worker aggiorna `heartbeat_il` ogni 30 s; un job rimette IN_ATTESA i lavori IN_CORSO senza heartbeat da 2 minuti.\n- Errori: `tentativi+1`; dopo 3 → FALLITO con messaggio.\n- Il PDF va su object storage; il lavoro salva solo l'URL.\n- Idempotenza: rieseguire un lavoro sovrascrive lo stesso file, nessun effetto collaterale doppio.\n- Crescita: passare a un broker (RabbitMQ, SQS) con ack e visibility timeout; aumentare i worker in modo indipendente dalle API.",
+"approfondimenti": [
+"Un worker si blocca a metà del lavoro e non muore: come te ne accorgi?",
+"Un lavoro fallisce sempre per un bug: come eviti che occupi i worker all'infinito?",
+"Polling ogni 2 secondi da migliaia di client: quali alternative hai?"
+]
+},
+{
+"id": "design-14",
+"livello": 3,
+"titolo": "Cache davanti a un servizio lento",
+"brief": "Il nostro servizio prodotti chiama un'API esterna di un fornitore che risponde in 2 secondi e ha un limite di 10 richieste al secondo. Le pagine prodotto devono caricarsi velocemente. Progetta il livello di cache.",
+"requisiti": [
+"Pagina prodotto in meno di 200 ms nella maggior parte dei casi",
+"Rispettare il limite di 10 richieste al secondo verso il fornitore",
+"Dati di prezzo e disponibilità vecchi al massimo di 5 minuti",
+"Continuare a funzionare se il fornitore è giù per qualche minuto",
+"Funzionare con più istanze del servizio"
+],
+"sezioni": [
+"Strategia di cache",
+"Dove sta la cache",
+"Scadenza e invalidazione",
+"Guasti",
+"Casi limite"
+],
+"griglia": [
+{
+"criterio": "Strategia",
+"atteso": "Cache-aside con TTL e sa spiegare il flusso hit/miss.",
+"peso": 3
+},
+{
+"criterio": "Cache condivisa",
+"atteso": "Redis condiviso tra le istanze, eventualmente con cache locale breve davanti.",
+"peso": 2
+},
+{
+"criterio": "Cache stampede",
+"atteso": "Riconosce il rischio di molte richieste contemporanee sulla stessa chiave scaduta e propone un lock o la deduplicazione.",
+"peso": 3
+},
+{
+"criterio": "Resilienza",
+"atteso": "Serve dati scaduti se il fornitore è giù (stale-while-error), timeout e circuit breaker.",
+"peso": 2
+},
+{
+"criterio": "Coerenza",
+"atteso": "Spiega quanto possono essere vecchi i dati e quando invalidare.",
+"peso": 1
+}
+],
+"soluzione": "- Pattern cache-aside con Redis condiviso:\n  1. `GET prodotto:{id}` in Redis; se presente e fresco → risposta.\n  2. Altrimenti chiama il fornitore, salva `SET prodotto:{id} json EX 1800` con campo `aggiornato_il`, risponde.\n- Freschezza: il dato è «fresco» per 5 minuti (confronto con `aggiornato_il`) ma resta in Redis 30 minuti come riserva.\n- Stampede: lock `SET lock:prodotto:{id} 1 NX EX 5`; solo chi lo ottiene chiama il fornitore, gli altri servono il dato vecchio o attendono brevemente.\n- Fornitore lento o giù: timeout di 3 s, circuit breaker (Resilience4j); se aperto si serve il dato scaduto con un indicatore «prezzo in aggiornamento».\n- Rispetto del limite: rate limiter in uscita condiviso (token bucket in Redis) a 8-9 richieste al secondo.\n- Prodotti più visti: refresh proattivo con un job prima della scadenza.\n- Cache locale (Caffeine) di 10-30 s davanti a Redis per i prodotti molto richiesti.\n- Spring: `@Cacheable` va bene per i casi semplici, ma stampede e stale vanno gestiti a mano.",
+"approfondimenti": [
+"Mille utenti aprono lo stesso prodotto nell'istante in cui la cache scade: cosa succede?",
+"Il fornitore cambia un prezzo: quanto tempo ci mette l'utente a vederlo e come lo riduci?",
+"Cosa fai se Redis va giù?"
+]
+}
+]
